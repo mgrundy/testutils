@@ -1,0 +1,132 @@
+#!/usr/bin/awk 
+# just clean these out
+/run command/ {
+	next
+}
+# clean up the noise, we're ok without the complete query
+/warning: log line attempted/ {
+	sub(/warning: log line attempted .* beginning and end ... /, "", $0)
+}
+
+{
+	# Print out the common bits
+	# $10 is the connection id
+	printf("%07d: %s %s %s ", NR, $1, $3, $10);
+}
+#/slaveTracking/ {
+	#Apr  2 16:10:36 fsaa26 mongod.27100[25536]: Tue Apr  2 16:10:36
+	#[slaveTracking] update local.slaves query:         
+	#{ _id: ObjectId('50aa93bc4c239d6e7dcf2ad0'), host: "10.1.2.9", ns:"local.oplog.rs" }
+        #	update: { $set: { syncedTo: Timestamp 1364915847000|914 } }
+	#      		nscanned:1 nupdated:1 fastmod:1 keyUpdates:0 locks(micros) w:283323 283ms
+#	printf("%s %s %s %s", $11, $12, $18, $NF)
+#	if ($0 ~ /[rw]:[0-9]+/) {
+#		locks=$(NF-1);
+#		split(locks,lockarray,":");
+#		lockms=lockarray[2]/1000;
+#		printf(" %slock: %dms (%s)", lockarray[1], lockms, locks);
+#	}
+#	printf("\n");
+#	next
+#}
+/query/ {
+ 	if ($0 ~ /getmore/) {
+		printf("%s %s %s", $11, $12, $NF);
+		lockf= NF - 3;
+	}
+	else if ($0 ~ /slaveTracking/) {
+		printf("%s %s %s %s", $11, $12, $18, $NF)
+		lockf= NF - 1;
+	}
+	else {
+		printf("%s %s %s", $11, $12, $NF);
+		lockf= NF - 3;
+	}
+
+	if ($0 ~ /[rw]:[0-9]+/) {
+		locks=$(lockf);
+		# quick check for weirds
+		if (locks ~ /micros/) {
+			locks=$(lockf + 1);
+		}
+		split(locks,lockarray,":");
+		lockms=lockarray[2]/1000;
+		printf(" %slock: %dms (%s)", lockarray[1], lockms, locks);
+	}
+	if (index($(NF-6), "numYields") > 0 ) {
+		printf(" numYields:%d", $(NF-5));
+	}
+	printf("\n");
+	next
+}
+/command:/ {
+	#[conn253] command admin.$cmd command: { ismaster: 1 } ntoreturn:1 keyUpdates:0  reslen:416 0ms
+	if ($0 ~ /ismaster/) {
+		printf("%s %s %s %s", $11, $12, $15, $NF);
+	}
+	#[conn7129] command local.$cmd command: { collstats: "slaves" }
+        #	ntoreturn:1 keyUpdates:0 locks(micros) r:33 reslen:268 0ms
+	else if ($0 ~ /stats|getLog|getParameter/) {
+		printf("%s %s %s %s %s", $11, $12, $15, $16, $NF);
+	}
+	else if ($0 ~ /Stat|top|listDatabase|profile|buildinfo|getCmdLineOpts|cursorInfo|isSelf/) {
+		printf("%s %s %s %s", $11, $12, $15, $NF);
+	}
+	else if ($0 ~ /writeBacksQueued|buildInfo/) {
+		printf("%s %s %s %s", $11, $12, $15, $NF);
+	}
+	#[conn7014] command admin.$cmd command: { replSetHeartbeat: "trending0",
+	#	v: 28, pv: 1, checkEmpty: false, from: "mongo-arbiter-1:27150", $auth: {} } 
+	#	ntoreturn:1 keyUpdates:0  reslen:125 0ms
+	else if ($0 ~ /command: { replSetHeartbeat/) {
+		printf("%s %s %s %s %s %s", $11, $12, $15, $16, $24, $NF);
+	}
+	else {
+		print "Parse Miss /command/:" $0
+	}
+	if ($0 ~ /[rw]:[0-9]+/) {
+		locks=$(NF-2);
+		split(locks,lockarray,":");
+		lockms=lockarray[2]/1000;
+		printf(" %slock: %dms (%s)", lockarray[1], lockms, locks);
+	}
+	if ($0 ~ /[RW]:[0-9]+/) {
+		locks=$(NF-3);
+		split(locks,lockarray,":");
+		lockms=lockarray[2]/1000;
+		printf(" %slock: %dms (%s)", lockarray[1], lockms, locks);
+	}
+	printf("\n");
+	next
+}
+
+# The next three rules are for Dan's instrumentation code
+/OplogEvent/ {
+	printf("%s %s %s\n", $11, $12, $14);
+	next
+}
+/rsSync/ {
+	if ($0 ~ /local.replset.minvalid/ ) {
+		printf("%s %s %.4fms (%s)\n", $11, $12, $14/1000, $14);
+	}
+	# [rsSync] replication batch size is 1
+	else if ($0 ~ /batch size/ ) {
+		printf("%s %s %s:%s\n", $11, $12, $13, $14);
+	}
+	# [rsSync] replication apply ops took 0ms
+	else if ($0 ~ /apply ops/ ) {
+		printf("%s %s %s %s\n", $11, $12, $13, $(NF));
+	}
+	else {
+		print "Parse Miss /rsSync/:" $0
+	}
+	next
+}
+/rsGhostSync/ {
+
+	printf("%s %s %s to %s\n", $11, $12, $13, $15);
+	next
+}
+{print substr($0, index($0,$11))}
+#Apr  2 16:13:15 fsaa26 mongod.27100[25536]: Tue Apr  2 16:13:15 [conn6991] end connection 10.101.3.195:56364 (2213 connections now open)
+#Apr  2 16:13:15 fsaa26 mongod.27100[25536]: Tue Apr  2 16:13:15 [initandlisten] connection accepted from 10.101.3.195:56677 #7014 (2214 connections now open)
