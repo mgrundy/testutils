@@ -43,7 +43,7 @@ function run_build() {
     cd $BUILD_DIR
     scons  -j8 --dd --gcov all
     if [ $? != 0 ]; then
-        error_disp $test
+        error_disp BUILD
         exit 1
     fi  
 }
@@ -68,6 +68,7 @@ function run_tests() {
         fi  
     done
 
+    # Not worried about error checking here until we are using gcc 4.8.1
     python buildscripts/smoke.py aggregation
     python buildscripts/smoke.py js
 }
