@@ -35,11 +35,12 @@ function do_git_tasks() {
         fi
     fi  
     if [ $DO_PATCH != 0 ]; then
-    	patch -p1 $PATCH
+        patch -p1 $PATCH
     fi
 }
 
 function run_build() {
+    cd $BUILD_DIR
     scons  -j8 --dd --gcov all
     if [ $? != 0 ]; then
         error_disp $test
@@ -48,6 +49,7 @@ function run_build() {
 }
 
 function run_tests() {
+    cd $BUILD_DIR
     # figure out what to do with this gcc 4.8.1 specific mess
     for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
         scons --dd --gcov $test; 
@@ -71,6 +73,7 @@ function run_tests() {
 }
 
 function run_coverage () {
+    cd $BUILD_DIR
     REV=$(git rev-parse --short HEAD)
     mkdir -p $LCOV_OUT/$REV
     lcov -t "$REV" -o $LCOV_TMP/stage1.info -c -d ./build/linux2/dd/gcov/mongo/ -b src/mongo/ --derive-func-data --rc lcov_branch_coverage=1
@@ -93,7 +96,12 @@ function run_coverage () {
     if [ $? != 0 ]; then
         error_disp $test
         echo genhtml failed
-    fi  
+    fi
+    # XXX This needs to be not so suck
+    cd $LCOV_OUT 
+    echo '<html><body>' > index.html
+    ls -thor | grep -v index | awk '{print "<a href=\""$8"\" >"$8" " $5" "$6" "$7"</a><br>"}' >> index.html
+    echo '</body></html>'>> index.html
 }
 
 function help () {
@@ -146,7 +154,7 @@ while [ $# -gt 0 ]; do
         fi
     elif [ "$1" == "--patch" ]; then
         shift
-	DO_PATCH=1
+        DO_PATCH=1
         if [ -e $1 ]; then
             PATCH=$1
         else
