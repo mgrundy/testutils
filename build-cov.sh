@@ -35,7 +35,12 @@ function do_git_tasks() {
         fi
     fi  
     if [ $DO_PATCH != 0 ]; then
-        patch -p1 $PATCH
+        patch --dry-run --silent -p1 < $PATCH
+        if [ $? == 0 ]; then
+            patch -N -p1 < $PATCH
+        else
+            echo PATCH $PATCH seems to be applied already, skipping
+        fi
     fi
 }
 
