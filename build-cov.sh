@@ -55,7 +55,7 @@ function run_build() {
 
 function run_tests() {
     cd $BUILD_DIR
-    # figure out what to do with this gcc 4.8.1 specific mess
+    # Run tests individually so that failures are noted, but bypassed
     for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
         scons --dd --gcov $test; 
         if [ $? != 0 ]; then
@@ -66,7 +66,6 @@ function run_tests() {
 
     for test in smokeJs smokeTool smokeReplSets smokeDur mongosTest smokeSharding smokeRepl smokeClone; do 
         scons --dd --gcov $test; 
-        #LD_LIBRARY_PATH=/usr/local/lib:/usr/lib:/usr/local/lib64:/usr/lib64 scons --dd --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
             echo $test returned $?;
