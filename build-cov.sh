@@ -12,10 +12,12 @@ DO_GIT=1
 DO_BUILD=1
 DO_TESTS=1
 DO_COV=1
+ERRORLOG=covbuilderrors.log
 
 function error_disp() {
 echo '===================================================='
 echo -n \t Step $1 failed, check above for deets
+echo -n \t Step $1 failed >> $ERRORLOG
 echo '===================================================='
 }
 
@@ -111,7 +113,7 @@ function run_coverage () {
 
 function help () {
     echo code coverage helper, usage: $0 
-    echo '-p "path" html output path'
+    echo '-d "path" html output path'
     echo '-t "path" temp directory for coverage .info files'
     echo '-b branch to work on'
     echo '-c check out branch'
@@ -192,7 +194,7 @@ while [ $# -gt 0 ]; do
         help
         exit
     else
-        echo unrecognized option
+        echo $1 : unrecognized option
         help
         exit
     fi
