@@ -1,5 +1,10 @@
 #!/bin/bash
 #Defaults
+if [ $(uname) == "Darwin" ]; then
+    CPUS=$(sysctl machdep.cpu.core_count| cut -f2 -d" ")
+else
+    CPUS=$(cat /proc/cpuinfo | grep -c processor)
+fi
 LCOV_OUT=./lcov-output
 LCOV_TMP=.
 BRANCH=master
@@ -51,7 +56,7 @@ function do_git_tasks() {
 
 function run_build() {
     cd $BUILD_DIR
-    scons  -j8 --mute --opt=off --gcov all
+    scons  -j${CPUS} --mute --opt=off --gcov all
     # This is the line for custom compiled 4.8.1 on my mac:
     # scons -j8 --opt=off --mute --gcov --cc=/usr/local/bin/gcc --cxx=/usr/local/bin/g++ --cpppath=/usr/local/include/c++/4.8.1/ --libpath=/usr/local/lib --extrapath=/usr/local/lib/gcc/x86_64-apple-darwin12.4.0/4.8.1/ all
     if [ $? != 0 ]; then
@@ -66,7 +71,7 @@ function run_tests() {
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
     for test in smoke smokeCppUnittests test; do 
-        scons -j8 --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
+        scons -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
             echo $test returned $?;
