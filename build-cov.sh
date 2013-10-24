@@ -208,7 +208,7 @@ while [ $# -gt 0 ]; do
     elif [ "$1" == "--mv-dir" ]; then
         shift
         if [ -d $1 ]; then
-            LCOV_TMP=$1
+            MV_PATH=$1
         else
             echo $1 is not a valid path
             exit -1
