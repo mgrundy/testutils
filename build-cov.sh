@@ -136,10 +136,22 @@ function run_coverage () {
     if [ $? != 0 ]; then
         error_disp $test
         echo lcov pass 2 failed
+        echo coverage data loss risk, please re-run:
+        echo lcov --extract raw-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
+        exit
     fi  
 
-    # Append all the test files to a single for reporting
-    lcov -a lcov-${REV}-*.info -o lcov-${REV}.info --rc lcov_branch_coverage=1
+    rm raw-${REV}.info
+
+    # Append all the test files to a single for reporting,
+    # first create an arg list of files to merge
+    for la in lcov-${REV}-*.info; do
+        covlist[${#covlist[@]}]="-a" 
+        covlist[${#covlist[@]}]=$la 
+    done
+    # Then run command with proper args. Supposedly we can just cat the files together
+    # We'll try that out later and see which is faster
+    lcov ${covlist[@]} -o lcov-${REV}.info --rc lcov_branch_coverage=1
     if [ $? != 0 ]; then
         error_disp $test
         echo lcov pass 3 failed
