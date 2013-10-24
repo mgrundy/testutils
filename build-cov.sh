@@ -129,19 +129,33 @@ function run_coverage () {
 
     # Clean up the coverage data files, that's why we die if phase one fails
     find $buildout -name \*.gcda -exec rm -f {} \;
+    # Finish the coverage report work in parallel with testing
+    run_coverage_background &
+}   
+ 
+function run_coverage_background () {
+
+    echo Starting background coverage
     cd $LCOV_TMP
-    
     # Clean out the third_party and system libs data
     lcov --extract raw-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
     if [ $? != 0 ]; then
         error_disp $test
+        mv raw-${REV}.info failed-raw-${REV}-${1}.info
         echo lcov pass 2 failed
+        echo run data saved in failed-raw-${REV}-${1}.info
         echo coverage data loss risk, please re-run:
-        echo lcov --extract raw-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
-        exit
+        echo lcov --extract failed-raw-${REV}-${1}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
+
+        return 
     fi  
 
     rm raw-${REV}.info
+
+    # ok, we have to serialize here
+    echo taking lock for lcov work
+    while ! mkdir $LCOV_TMP/buildcovlock > /dev/null 2>&1 ; do sleep 1; done;
+    trap 'rm -rf $LCOV_TMP/buildcovlock' 0 
 
     # Append all the test files to a single for reporting,
     # first create an arg list of files to merge
@@ -170,8 +184,11 @@ function run_coverage () {
     echo '<html><body>' > index.html
     ls -thor | grep -v index | awk '{print "<a href=\""$8"\" >"$8" " $5" "$6" "$7"</a><br>"}' >> index.html
     echo '</body></html>'>> index.html
-
+   
+    echo releasing lock 
+    rm -rf $LCOV_TMP/buildcovlock
     cd $BUILD_DIR
+    return
 }
 
 function help () {
@@ -314,6 +331,9 @@ fi
 if [ $DO_COV != 0 ]; then
     run_coverage report_only
 fi
+# we may have launched children
+echo Waiting for subprocesses to complete
+wait
 echo Have a nice day
 
 if [ $DO_TESTS != 0 ]; then
