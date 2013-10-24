@@ -19,13 +19,13 @@ DO_BUILD=1
 DO_TESTS=1
 DO_JSTEST=1
 DO_UNIT=1
-DO_COV=0
+DO_COV=1
 DB_PATH=/data
 MV_PATH=/local/ml
 ERRORLOG=covbuilderrors.log
 failedtests[${#failedtests[@]}]="Failed Test List:"
 # run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
-TEST_PLAN="js clone repl replSets dur auth aggregation failPoint multiVersion disk sharding tool parallel" 
+TEST_PLAN="js clone repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel" 
 
 function error_disp() {
 echo '===================================================='
@@ -60,7 +60,7 @@ function do_git_tasks() {
 
 function run_build() {
     cd $BUILD_DIR
-    scons  -j${CPUS} --mute --opt=off --gcov all
+    scons --ssl -j${CPUS} --mute --opt=off --gcov all
     # This is the line for custom compiled 4.8.1 on my mac:
     # scons -j8 --opt=off --mute --gcov --cc=/usr/local/bin/gcc --cxx=/usr/local/bin/g++ --cpppath=/usr/local/include/c++/4.8.1/ --libpath=/usr/local/lib --extrapath=/usr/local/lib/gcc/x86_64-apple-darwin12.4.0/4.8.1/ all
     if [ $? != 0 ]; then
@@ -75,7 +75,7 @@ function run_unittests() {
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
     for test in smoke smokeCppUnittests smokeClient test; do 
-        scons -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
+        scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
             echo $test returned $?;
@@ -95,7 +95,7 @@ function run_jstests() {
     # Run every test in the plan
     for test in $TEST_PLAN; do
         echo ===== Running $test =====
-        python buildscripts/smoke.py $AUTH --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
+        python buildscripts/smoke.py $AUTH $SSL --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
         if [ $? != 0 ]; then
             error_disp $test
             failedtests[${#failedtests[@]}]=$test
@@ -181,16 +181,18 @@ function help () {
     echo '-c check out branch'
     echo '-x run git clean -fqdx before build'
     echo '-p run git pull before build'
+    echo '--auth run jstests with --auth parameter to smoke'
     echo '--patch "patch path/name" patch to apply before build (not implemented yet)'
     echo '--build-dir "path" place where MongoDB source lives'
     echo '--mv-dir "path" multiversion link directory'
     echo '--skip-git skip over all the git phases'
     echo '--skip-build skip the build phase'
+    echo '--skip-coverage coverage reports will not be run'
+    echo "--skip-jstest don\'t run jstests"
     echo "--skip-test don\'t run tests, but run coverage if not skipped"
     echo "--skip-unit don\'t run unit tests"
-    echo "--skip-jstest don\'t run jstests"
-    echo "--test-plan \"list of js test suites\""
-    echo '--skip-coverage coverage reports will not be run'
+    echo "--ssl run jstests with ssl support"
+    echo "--test-plan \"list of js test suites\" to run"
 }
 
 
@@ -273,6 +275,8 @@ while [ $# -gt 0 ]; do
     elif [ "$1" == "--test-plan" ]; then
         shift
         TEST_PLAN=$1
+    elif [ "$1" == "--ssl" ]; then
+        SSL="--use-ssl"
     elif [ "$1" == "--auth" ]; then
         AUTH=--auth  
     elif [ "$1" == "--help" ]; then
