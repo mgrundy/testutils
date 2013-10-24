@@ -17,12 +17,15 @@ DO_CO=0
 DO_GIT=1
 DO_BUILD=1
 DO_TESTS=1
+DO_JSTEST=1
 DO_UNIT=1
-DO_COV=1
+DO_COV=0
 DB_PATH=/data
 MV_PATH=/local/ml
 ERRORLOG=covbuilderrors.log
 failedtests[${#failedtests[@]}]="Failed Test List:"
+# run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
+TEST_PLAN="js clone repl replSets dur auth aggregation failPoint multiVersion disk sharding tool parallel" 
 
 function error_disp() {
 echo '===================================================='
@@ -66,12 +69,12 @@ function run_build() {
     fi  
 }
 
-function run_tests() {
+function run_unittests() {
     cd $BUILD_DIR
     # Run tests individually so that failures are noted, but bypassed
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
-    for test in smoke smokeCppUnittests test; do 
+    for test in smoke smokeCppUnittests smokeClient test; do 
         scons -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
@@ -80,63 +83,76 @@ function run_tests() {
             # put in option to fail here
             # exit
         fi  
+        run_coverage $test 
     done
 
-    if [ $DO_COV != 0 ]; then
-        run_coverage "Unit Tests"
-    fi
-    # run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
-    #for test in js jsPerf disk parallel clone repl replSets dur auth sharding tool aggregation multiVersion failPoint ssl jsSlowNightly jsSlowWeekly ; do
+}
 
+function run_jstests() {
     #append multiversion link path
     export PATH=$PATH:$MV_PATH
 
-    # taking out the slows for a couple days
-    for test in js clone repl replSets dur auth aggregation failPoint multiVersion disk parallel sharding tool "--auth aggregation" ; do
-#    for test in multiVersion js jsPerf disk parallel clone repl replSets dur auth sharding tool aggregation failPoint ssl; do
+    # Run every test in the plan
+    for test in $TEST_PLAN; do
         echo ===== Running $test =====
-        python buildscripts/smoke.py --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
+        python buildscripts/smoke.py $AUTH --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
         if [ $? != 0 ]; then
             error_disp $test
             failedtests[${#failedtests[@]}]=$test
             echo $test returned $?;
         fi  
         # Takes longer, but gives us incremental coverage results
-        if [ $DO_COV != 0 ]; then
-            run_coverage $test
-        fi
+        run_coverage $test
     done
 }
 
 function run_coverage () {
+    # Make sure we're supposed to be here
+    if [ $DO_COV -eq 0 ]; then
+        return
+    fi
+    # figure out where the binaries are
     cd $BUILD_DIR
     buildout=$(dirname $(find build -type f -perm +111 -name mongod))
     REV=$(git rev-parse --short HEAD)
     mkdir -p $LCOV_OUT/$REV
-    lcov -t "$REV" -o $LCOV_TMP/complete-${REV}.info -c -d ./${buildout}  -b src/mongo/ --derive-func-data --rc lcov_branch_coverage=1
+
+    # $1 is the test
+    lcov -t $1 -o $LCOV_TMP/raw-${REV}.info -c -d ./${buildout}  -b src/mongo/ --derive-func-data --rc lcov_branch_coverage=1
     if [ $? != 0 ]; then
         error_disp $test
         echo lcov pass 1 failed
+        echo coverage data loss risk, please re-run:
+        echo lcov -t $1 -o $LCOV_TMP/raw-${REV}.info -c -d ./${buildout}  -b src/mongo/ --derive-func-data --rc lcov_branch_coverage=1
+        exit
     fi  
+
+    # Clean up the coverage data files, that's why we die if phase one fails
+    find $buildout "-name \*.gcda -exec rm -f {} \;"
     cd $LCOV_TMP
-    lcov --extract complete-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}.info --rc lcov_branch_coverage=1
+    
+    # Clean out the third_party and system libs data
+    lcov --extract raw-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
     if [ $? != 0 ]; then
         error_disp $test
         echo lcov pass 2 failed
     fi  
-# We had been filtering out the tests, but that doesn't help us understand
-# which tests ran.
-#    lcov --remove stage2.info \*test\* -o  stage3.info --rc lcov_branch_coverage=1
-#    if [ $? != 0 ]; then
-#        error_disp $test
-#        echo lcov pass 3 failed
-#    fi  
-    genhtml -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
+
+    # Append all the test files to a single for reporting
+    lcov -a lcov-${REV}-*.info -o lcov-${REV}.info --rc lcov_branch_coverage=1
+    if [ $? != 0 ]; then
+        error_disp $test
+        echo lcov pass 3 failed
+    fi  
+
+    # Run genhtml with 
+    genhtml -s -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
     if [ $? != 0 ]; then
         error_disp $test
         echo genhtml failed
     fi
     # XXX This needs to be not so suck
+    # Let's change this to calling another script
     cd $LCOV_OUT 
     echo '<html><body>' > index.html
     ls -thor | grep -v index | awk '{print "<a href=\""$8"\" >"$8" " $5" "$6" "$7"</a><br>"}' >> index.html
@@ -158,7 +174,10 @@ function help () {
     echo '--mv-dir "path" multiversion link directory'
     echo '--skip-git skip over all the git phases'
     echo '--skip-build skip the build phase'
-    echo "--skip-test don\'t run tests"
+    echo "--skip-test don\'t run tests, but run coverage if not skipped"
+    echo "--skip-unit don\'t run unit tests"
+    echo "--skip-jstest don\'t run jstests"
+    echo "--test-plan \"list of js test suites\""
     echo '--skip-coverage coverage reports will not be run'
 }
 
@@ -232,10 +251,18 @@ while [ $# -gt 0 ]; do
     # TODO
     elif [ "$1" == "--skip-unit" ]; then
         DO_UNIT=0
+    elif [ "$1" == "--skip-jstest" ]; then
+        DO_JSTEST=0
     elif [ "$1" == "--skip-test" ]; then
         DO_TESTS=0
+        DO_COV=1
     elif [ "$1" == "--skip-coverage" ]; then
         DO_COV=0
+    elif [ "$1" == "--test-plan" ]; then
+        shift
+        TEST_PLAN=$1
+    elif [ "$1" == "--auth" ]; then
+        AUTH=--auth  
     elif [ "$1" == "--help" ]; then
         help
         exit
@@ -260,10 +287,15 @@ if [ $DO_BUILD != 0 ]; then
     run_build
 fi
 if [ $DO_TESTS != 0 ]; then
-    run_tests
+    if [ $DO_UNIT != 0 ]; then
+        run_unittests
+    else if [ $DO_JSTEST != 0 ]; then
+        run_jstests
+    fi
 fi
+# only run if tests aren't
 if [ $DO_COV != 0 ]; then
-    run_coverage
+    run_coverage report_only
 fi
 echo Have a nice day
 
