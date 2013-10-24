@@ -156,6 +156,7 @@ function run_coverage () {
         error_disp $test
         echo lcov pass 3 failed
     fi  
+    unset $covlist
 
     # Run genhtml with 
     genhtml -s -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
