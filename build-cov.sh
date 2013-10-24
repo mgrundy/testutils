@@ -289,7 +289,7 @@ fi
 if [ $DO_TESTS != 0 ]; then
     if [ $DO_UNIT != 0 ]; then
         run_unittests
-    else if [ $DO_JSTEST != 0 ]; then
+    elif [ $DO_JSTEST != 0 ]; then
         run_jstests
     fi
 fi
