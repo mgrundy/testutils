@@ -89,6 +89,7 @@ function run_unittests() {
 }
 
 function run_jstests() {
+    cd $BUILD_DIR
     #append multiversion link path
     export PATH=$PATH:$MV_PATH
 
