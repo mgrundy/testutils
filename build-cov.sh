@@ -128,7 +128,7 @@ function run_coverage () {
     fi  
 
     # Clean up the coverage data files, that's why we die if phase one fails
-    find $buildout "-name \*.gcda -exec rm -f {} \;"
+    find $buildout -name \*.gcda -exec rm -f {} \;
     cd $LCOV_TMP
     
     # Clean out the third_party and system libs data
