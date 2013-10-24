@@ -96,7 +96,7 @@ function run_jstests() {
     # Run every test in the plan
     for test in $TEST_PLAN; do
         echo ===== Running $test =====
-        python buildscripts/smoke.py $AUTH $SSL --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
+        python buildscripts/smoke.py $AUTH $SSL --continue-on-failure --smoke-db-prefix=$DB_PATH $test; 
         if [ $? != 0 ]; then
             error_disp $test
             failedtests[${#failedtests[@]}]=$test
