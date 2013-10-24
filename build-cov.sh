@@ -129,12 +129,14 @@ function run_coverage () {
 
     # Clean up the coverage data files, that's why we die if phase one fails
     find $buildout -name \*.gcda -exec rm -f {} \;
-    # Finish the coverage report work in parallel with testing
-    run_coverage_background &
+    echo Finishing the coverage report work in parallel with testing
+    run_coverage_background $@ &
+    echo Continuing onwards
+    return
 }   
  
 function run_coverage_background () {
-
+set -x
     echo Starting background coverage
     cd $LCOV_TMP
     # Clean out the third_party and system libs data
@@ -170,7 +172,7 @@ function run_coverage_background () {
         error_disp $test
         echo lcov pass 3 failed
     fi  
-    unset $covlist
+    unset covlist
 
     # Run genhtml with 
     genhtml -s -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
