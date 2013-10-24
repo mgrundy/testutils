@@ -1,5 +1,6 @@
 #!/bin/bash
 #Defaults
+which lcov
 if [ $(uname) == "Darwin" ]; then
     CPUS=$(sysctl machdep.cpu.core_count| cut -f2 -d" ")
 else
@@ -94,7 +95,7 @@ function run_tests() {
     for test in js clone repl replSets dur auth aggregation failPoint multiVersion disk parallel sharding tool "--auth aggregation" ; do
 #    for test in multiVersion js jsPerf disk parallel clone repl replSets dur auth sharding tool aggregation failPoint ssl; do
         echo ===== Running $test =====
-        python buildscripts/smoke.py --smoke-db-prefix=$DB_PATH $test; 
+        python buildscripts/smoke.py --continue-on-error --smoke-db-prefix=$DB_PATH $test; 
         if [ $? != 0 ]; then
             error_disp $test
             failedtests[${#failedtests[@]}]=$test
@@ -245,6 +246,12 @@ while [ $# -gt 0 ]; do
     fi
     shift
 done
+
+# quick check for lcov
+if [ $? -ne 0 ]; then
+    error_disp "LCOV check"
+    exit 1
+fi
 
 if [ $DO_GIT != 0 ]; then
     do_git_tasks
