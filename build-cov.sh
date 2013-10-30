@@ -162,18 +162,20 @@ set -x
 
     # Append all the test files to a single for reporting,
     # first create an arg list of files to merge
-    for la in lcov-${REV}-*.info; do
-        covlist[${#covlist[@]}]="-a" 
-        covlist[${#covlist[@]}]=$la 
-    done
+#    for la in lcov-${REV}-*.info; do
+#        covlist[${#covlist[@]}]="-a" 
+#        covlist[${#covlist[@]}]=$la 
+#    done
     # Then run command with proper args. Supposedly we can just cat the files together
     # We'll try that out later and see which is faster
-    lcov ${covlist[@]} -o lcov-${REV}.info --rc lcov_branch_coverage=1
-    if [ $? != 0 ]; then
-        error_disp $test
-        echo lcov pass 3 failed
-    fi  
-    unset covlist
+    cat lcov-${REV}-*.info > lcov-${REV}.info
+    # Guess which was faster?
+#    lcov ${covlist[@]} -o lcov-${REV}.info --rc lcov_branch_coverage=1
+#    if [ $? != 0 ]; then
+#        error_disp $test
+#        echo lcov pass 3 failed
+#    fi  
+#    unset covlist
 
     # Run genhtml with 
     genhtml -s -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
