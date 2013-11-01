@@ -55,15 +55,15 @@ ec2InstanceTypes = [
 ]
 
 pvmAmiList = {
-        "rhel59": 'ami-cfb32a6',
         "awz":'ami-35792c5c',
+        "centos5":'ami-7739b21e',   #DynaCenter ami
+        "centos6":'ami-07b73c6e',   #DynaCenter ami
+        "rhel59": 'ami-cf5b32a6',
         "rhel64":'ami-a25415cb',
         "sles11":'ami-e8084981',
         "ubuntu1004":'ami-68c01201',
         "ubuntu1204":'ami-a73264ce',
         "ubuntu1310":'ami-ad184ac4',
-        "centos5":'ami-7739b21e',   #DynaCenter ami
-        "centos6":'ami-07b73c6e',   #DynaCenter ami
         "fedora19":'ami-b22e5cdb'
         }
 hvmAmiList = {
@@ -71,10 +71,10 @@ hvmAmiList = {
         "win2008":'ami-7f236a16',
         "win2012":'ami-173d747e',
         "awz":'ami-69792c00',
-        "ubuntu13":'ami-a1184ac8',
-        "ubuntu12":'ami-b93264d0',
         "rhel64":'ami-3218595b',
-        "sles11":'ami-b6c146df'
+        "sles11":'ami-b6c146df',
+        "ubuntu13":'ami-a1184ac8',
+        "ubuntu12":'ami-b93264d0'
         }
 
 
@@ -224,7 +224,7 @@ def launch_instance(ami='ami-7341831a',
     print 'waiting for instances'
     state = 'not'
     while state != 'running':
-        print '.'
+        sys.stdout.write('.')
         time.sleep(5)
         for r in reservation:
             for instance in r.instances:
@@ -233,7 +233,7 @@ def launch_instance(ami='ami-7341831a',
                 if (instance.state != 'running'):
                     state = 'not'
 
-    print 'Tagging instances'
+    print '\nTagging instances'
 
     # Let's tag the instance with the specified label so we can
     # identify it later.
@@ -392,6 +392,11 @@ def main():
 
     if( (not options.instanceType) or (not options.buildCount) or (not options.groupName)):
         parser.error("options -i and -c, -g are mandatory")
+    if( (options.domainName and not options.prefixName) or
+            (options.prefixName and not options.domainName) ):
+        parser.error("options --domain and --prefix must both be specified")
+
+    # Get the database connection set up    
     if options.useDB:
         try:
             connection = MongoClient('localhost', 27017)
@@ -403,11 +408,14 @@ def main():
         db = connection['ec2data']
         # and the collection
         ec2_inst = db['instances']
+
+
     # Make sure we don't leave the root EBS volume hanging around
     dev_sda = boto.ec2.blockdevicemapping.EBSBlockDeviceType(delete_on_termination=True, size=20)
     block_dm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
     block_dm['/dev/sda1'] = dev_sda
-    # Map out the ephemeral disks
+
+    # Map out the ephemeral disks. This doesn't seem to choke if there are less instance disks available
     block_dm['/dev/sdc'] = boto.ec2.blockdevicemapping.EBSBlockDeviceType(ephemeral_name='ephemeral0')
     block_dm['/dev/sdd'] = boto.ec2.blockdevicemapping.EBSBlockDeviceType(ephemeral_name='ephemeral1')
     block_dm['/dev/sde'] = boto.ec2.blockdevicemapping.EBSBlockDeviceType(ephemeral_name='ephemeral2')
@@ -420,11 +428,15 @@ def main():
     inst_tags = {'Name':options.instName, 'requestor':options.requestor, 'expire-on': options.expires}
     pprint(inst_tags)
 
-
-    if options.hvmVirt:
-        launchAmi = hvmAmiList[options.amiId]
-    else:
-        launchAmi = pvmAmiList[options.amiId]
+    
+    try:
+        if options.hvmVirt:
+            launchAmi = hvmAmiList[options.amiId]
+        else:
+            launchAmi = pvmAmiList[options.amiId]
+    except :
+        parser.error("--ami is required and must be on the list (use --list-ami to see the list)\n" +
+                     "Also, you may have to use --hvm for hardware virt images")
 
     # Decided not to do this inline for clarity
     kname = os.path.basename(options.keyFile)
@@ -475,8 +487,8 @@ def main():
         except ValueError, e:
             # print sys.exc_info()
             print e
-
-    dnsUpdate(hostList, options.domainName + ".") 
+    if options.domainName:
+        dnsUpdate(hostList, options.domainName + ".") 
 
 if __name__ == "__main__":
     main()
