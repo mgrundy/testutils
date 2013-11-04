@@ -9,6 +9,8 @@ from boto.route53 import connection
 from boto.route53.record import ResourceRecordSets
 import copy
 import pymongo
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 from pprint import pprint
 
 # We'll use these to determine what the highest spot price

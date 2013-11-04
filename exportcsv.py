@@ -5,6 +5,7 @@ import itertools
 import sys
 import optparse
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 
 def main():
