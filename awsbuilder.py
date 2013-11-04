@@ -168,14 +168,7 @@ def launch_instance(ami='ami-7341831a',
     # on the specified port.
     try:
         group.authorize('tcp', ssh_port, ssh_port, cidr)
-        # and httpd
-        group.authorize('tcp',80 ,80 , cidr)
-	# kerberos server ports
-        #group.authorize('tcp',88 ,88 , cidr)
-        #group.authorize('tcp',749 ,749 , cidr)
-        #group.authorize('udp',88 ,88 , cidr)
-        #group.authorize('udp', 749, 749, cidr)
-	# Add a range of ports for MongoDB
+	    # Add a range of ports for MongoDB
         group.authorize('tcp', 27010, 27050, cidr)
     except ec2.ResponseError, e:
         if e.code == 'InvalidPermission.Duplicate':
@@ -288,7 +281,7 @@ def main():
     parser = optparse.OptionParser(usage="""\
 %prog [options]
 
-10gen AWS instance builder for test""")
+MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("-l", "--log-file", dest="logfile",
         help="name of logfile all session traffic will be written to",
@@ -314,7 +307,7 @@ def main():
         )
 
     parser.add_option("--nodb", dest="useDB",
-        help="Request spot instances",
+        help="Don't use database to store created instance data",
         action="store_false",
         default=True)
 
@@ -357,8 +350,28 @@ def main():
         help="name and path of ssh key file, created if doesn't exist",
         default=None)
 
-    parser.add_option("-g", "--group", dest="groupName",
+    parser.add_option("--start", dest="action",
+        help="Start the instances selected by --group or -i",
+        action="store_const", 
+        const='start',
+        default=None)
+    parser.add_option("--stop", dest="action",
+        help="Stop the instances selected by --group or -i",
+        action="store_const", 
+        const='stop',
+        default=None)
+    parser.add_option("--terminate", dest="action",
+        help="Terminate the instances selected by --group or -i",
+        action="store_const", 
+        const='terminate',
+        default=None)
+
+    parser.add_option("--sec-group", dest="secGroup",
         help="name of security group to use, will create if doesn't exist (With ssh only)",
+        default=None)
+
+    parser.add_option("--group", dest="groupName",
+        help="name of management group. only used internally for managing instances (do this if you are attached to a db)",
         default=None)
 
     parser.add_option("-d", "--domain", dest="domainName",
@@ -392,8 +405,17 @@ def main():
             print "\t", instType, "\t", price['hourly']
         sys.exit()
 
-    if( (not options.instanceType) or (not options.buildCount) or (not options.groupName)):
-        parser.error("options -i and -c, -g are mandatory")
+    # Here's where I smh and realize I have to move all of the instance creation junk
+    # to a separate method and out of main.
+    if( options.groupName or options.instance ):
+        if options.action:
+            changeState(options.groupName, options.instance, options.action)
+
+        sys.exit()
+
+
+    if( (not options.instanceType) or (not options.buildCount) or (not options.secGroup)):
+        parser.error("options -m, -c, -g are mandatory")
     if( (options.domainName and not options.prefixName) or
             (options.prefixName and not options.domainName) ):
         parser.error("options --domain and --prefix must both be specified")
@@ -452,7 +474,7 @@ def main():
                     key_name=kname,
                     key_extension=kext,
                     key_dir=kdir,
-                    group_name=options.groupName,
+                    group_name=options.secGroup,
                     tags=inst_tags,
                     cmd_shell=False,
 #                    user_data=script,
@@ -481,10 +503,11 @@ def main():
             instance['private_ip_address'] = inst.private_ip_address
             instance['key_name'] = inst.key_name
             instance['dns_alias'] = tmphname[:-1]
-            print "i made this:\n ", instance
+            if options.groupName:
+    			instance['group'] = options.groupName
+            print "Instance created:\n ", instance
 
             if options.useDB:
-                print "inserting ", instance
                 ec2_inst.insert(instance)
         except ValueError, e:
             # print sys.exc_info()
