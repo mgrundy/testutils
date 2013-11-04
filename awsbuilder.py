@@ -12,6 +12,8 @@ import pymongo
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from pprint import pprint
+import ConfigParser
+from os.path import expanduser
 
 # We'll use these to determine what the highest spot price
 # should be
@@ -256,13 +258,18 @@ def create_and_attach_volume(instance, volume_size, device_name):
     volume.attach(instance.id, device_name)
     return volume
 
-def dnsUpdate( hostDict, dnsName):
+def dnsUpdate( hostDict, dnsName, access=None, key=None):
 
     # Connect 
-    route53 = connection.Route53Connection()
+    route53 = connection.Route53Connection(access, key)
 
     # Get the Zone obj for our domain
     dnsZone=route53.get_zone(dnsName)
+
+    if not dnsZone:
+        print "unable to get zone for " + dnsName
+        print "DNS not updated"
+        return
 
     # aname is our alias, hname is the real host name
     for aname, hname in hostDict.iteritems():
@@ -513,7 +520,23 @@ MongoDB CAP AWS instance builder for test""")
             # print sys.exc_info()
             print e
     if options.domainName:
-        dnsUpdate(hostList, options.domainName + ".") 
+        # get the path to the user's homedir
+        user_home = expanduser("~")
+
+        #load their .boto config file
+        config = ConfigParser.ConfigParser()
+        config.read([str(user_home + "/.boto")])
+
+        #get the keypair for Route53Credentials
+        R53access = None
+        R53key = None
+        try:
+            R53access = config.get('Route53Credentials', 'aws_access_key_id')
+            R53key = config.get('Route53Credentials', 'aws_secret_access_key')
+        except:
+            print "No Route53 specific credentials found"
+
+        dnsUpdate(hostList, options.domainName + ".", access=R53access, key=R53key) 
 
 if __name__ == "__main__":
     main()
