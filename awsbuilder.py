@@ -336,7 +336,7 @@ MongoDB CAP AWS instance builder for test""")
         default=False)
 
     parser.add_option("--hvm", dest="hvmVirt",
-        help="list AMIs available in this utility",
+        help="use hardware virtualization for Windows instances and m3 or cluster compute machine types",
         action="store_true",
         default=False)
 
