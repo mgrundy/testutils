@@ -3,6 +3,7 @@
 import optparse
 import ldap
 import ldap.modlist as modlist
+import sys
 
 def main():
 	parser = optparse.OptionParser(usage="""\
