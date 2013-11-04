@@ -7,6 +7,7 @@ import datetime
 import time
 from pprint import pprint
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 
 
 def main():
