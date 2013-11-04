@@ -14,6 +14,8 @@ from pymongo.errors import ConnectionFailure
 from pprint import pprint
 import ConfigParser
 from os.path import expanduser
+from Crypto.Cipher import PKCS1_v1_5
+from Crypto.PublicKey import RSA
 
 # We'll use these to determine what the highest spot price
 # should be
@@ -80,6 +82,30 @@ hvmAmiList = {
         "ubuntu13":'ami-a1184ac8',
         "ubuntu12":'ami-b93264d0'
         }
+
+
+def getWindowsPassword(ec2, instance, keyfile):
+    plaintext = None
+    password_data = None
+    try:
+        input = open(keyfile)
+        key = RSA.importKey(input.read())
+        input.close()
+        # is this really the best way?
+        while not password_data:
+            print "getting password for instance: ", instance
+            password_data = ec2.get_password_data(instance)
+            time.sleep(10)
+        cipher = PKCS1_v1_5.new(key)
+        plaintext = cipher.decrypt(password_data.decode('base64'), None)
+    except IOError, e:
+        print "IOError: ", e[0], e[1], keyfile
+    except (ValueError, IndexError, TypeError) as detail:
+        print type(detail), detail
+    except e: 
+        print type(e), e
+    finally:
+        return plaintext
 
 
 #    Loop through all pending request ids waiting for them to be fulfilled.
@@ -357,6 +383,11 @@ MongoDB CAP AWS instance builder for test""")
         help="name and path of ssh key file, created if doesn't exist",
         default=None)
 
+    parser.add_option("--windows-password", dest="winPass",
+        help="Get the Windows administrator password for the instances selected by --group or -i",
+        action="store_const", 
+        const='pass',
+        default=None)
     parser.add_option("--start", dest="action",
         help="Start the instances selected by --group or -i",
         action="store_const", 
@@ -412,22 +443,20 @@ MongoDB CAP AWS instance builder for test""")
             print "\t", instType, "\t", price['hourly']
         sys.exit()
 
-    # Here's where I smh and realize I have to move all of the instance creation junk
-    # to a separate method and out of main.
-    if( options.groupName or options.instance ):
-        if options.action:
-            changeState(options.groupName, options.instance, options.action)
+    if options.amiId:
+        if( (not options.instanceType) or (not options.buildCount) or (not options.secGroup)):
+            parser.error("options -m, -c, -g are mandatory for instance creation")
+        if( (options.domainName and not options.prefixName) or
+                (options.prefixName and not options.domainName) ):
+            parser.error("options --domain and --prefix must both be specified")
 
-        sys.exit()
+    if options.action and ( not (bool(options.instance) ^ bool(options.groupName))):
+        parser.error("You have to specify an instance id or group for control (start/stop/term) functions")
 
+    if options.winPass and ( not (bool(options.instance) ^ bool(options.groupName))):
+        parser.error("You have to specify an instance id or group for control (windows password) functions")
 
-    if( (not options.instanceType) or (not options.buildCount) or (not options.secGroup)):
-        parser.error("options -m, -c, -g are mandatory")
-    if( (options.domainName and not options.prefixName) or
-            (options.prefixName and not options.domainName) ):
-        parser.error("options --domain and --prefix must both be specified")
-
-    # Get the database connection set up    
+    # Get the database connection set up. Place no connect actions above, post connects below
     if options.useDB:
         try:
             connection = MongoClient('localhost', 27017)
@@ -439,6 +468,15 @@ MongoDB CAP AWS instance builder for test""")
         db = connection['ec2data']
         # and the collection
         ec2_inst = db['instances']
+    elif options.groupName:
+        parser.error("You can't use group name without a database connection")
+
+    # Here's where I smh and realize I have to move all of the instance creation junk
+    # to a separate method and out of main.
+    if( options.groupName or options.instance ):
+        if options.action:
+            changeState(options.groupName, options.instance, options.action, ec2_inst)
+        sys.exit()
 
 
     # Make sure we don't leave the root EBS volume hanging around
@@ -527,7 +565,7 @@ MongoDB CAP AWS instance builder for test""")
         config = ConfigParser.ConfigParser()
         config.read([str(user_home + "/.boto")])
 
-        #get the keypair for Route53Credentials
+        #get the keypair for optional Route53Credentials
         R53access = None
         R53key = None
         try:
@@ -538,5 +576,7 @@ MongoDB CAP AWS instance builder for test""")
 
         dnsUpdate(hostList, options.domainName + ".", access=R53access, key=R53key) 
 
+# quick and ugly ugly test
+#print getWindowsPassword(boto.connect_ec2(),'i-b69b42cd', 'mg-repro.pem')
 if __name__ == "__main__":
     main()
