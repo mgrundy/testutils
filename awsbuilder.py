@@ -445,7 +445,7 @@ MongoDB CAP AWS instance builder for test""")
 
     if options.amiId:
         if( (not options.instanceType) or (not options.buildCount) or (not options.secGroup)):
-            parser.error("options -m, -c, -g are mandatory for instance creation")
+            parser.error("options -m, -c, --sec-group are mandatory for instance creation")
         if( (options.domainName and not options.prefixName) or
                 (options.prefixName and not options.domainName) ):
             parser.error("options --domain and --prefix must both be specified")
