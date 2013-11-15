@@ -83,6 +83,33 @@ hvmAmiList = {
         "ubuntu12":'ami-b93264d0'
         }
 
+def changeState(group, instid, action, ec2_inst):
+    ec2 = boto.connect_ec2()
+    instancelist = list()
+    # try block this stuff please
+    if group:
+        instances = ec2_inst.find({"group":group},{"_id":1})
+        for instance in instances:
+        	instancelist.append(instance["_id"])
+    elif instid:
+       	instancelist.append(instid)
+    else:
+        print "Internal Error, no instance or group specified"
+        return
+
+    if action == "stop":
+        reslist = ec2.stop_instances(instance_ids=instancelist)
+
+    elif action == "start":
+        reslist = ec2.start_instances(instance_ids=instancelist)
+
+    elif action == "terminate":
+        reslist = ec2.terminate_instances(instance_ids=instancelist)
+
+    else:
+        print "Internal Error, no action specified"
+
+    print reslist
 
 def getWindowsPassword(ec2, instance, keyfile):
     plaintext = None
@@ -151,6 +178,7 @@ def launch_instance(ami='ami-7341831a',
                     cmd_shell=True,
                     login_user='ec2-user',
                     ssh_passwd=None,
+                    getPass=False,
         		    bdm=None):
 
 
@@ -265,6 +293,11 @@ def launch_instance(ami='ami-7341831a',
             for tagname in tags:
                 instance.add_tag(tagname,tags[tagname])
             print instance.public_dns_name
+
+    if getPass:
+        for r in reservation:
+            for instance in r.instances:
+                getWindowsPassword(ec2, instance, key_dir + "/" + key_name + key_extension)
 
     return (reservation)
 
@@ -385,20 +418,23 @@ MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("--windows-password", dest="winPass",
         help="Get the Windows administrator password for the instances selected by --group or -i",
+        action="store_true",
+        default=False)
+    parser.add_option("--root-size", dest="rootSize",
+        help="Set the root volume size in gb. 40gb required for Windows instances, 20gb is default",
         action="store_const", 
-        const='pass',
-        default=None)
-    parser.add_option("--start", dest="action",
+        default=20)
+    parser.add_option("--start", dest="controlAction",
         help="Start the instances selected by --group or -i",
         action="store_const", 
         const='start',
         default=None)
-    parser.add_option("--stop", dest="action",
+    parser.add_option("--stop", dest="controlAction",
         help="Stop the instances selected by --group or -i",
         action="store_const", 
         const='stop',
         default=None)
-    parser.add_option("--terminate", dest="action",
+    parser.add_option("--terminate", dest="controlAction",
         help="Terminate the instances selected by --group or -i",
         action="store_const", 
         const='terminate',
@@ -450,11 +486,12 @@ MongoDB CAP AWS instance builder for test""")
                 (options.prefixName and not options.domainName) ):
             parser.error("options --domain and --prefix must both be specified")
 
-    if options.action and ( not (bool(options.instance) ^ bool(options.groupName))):
+    if options.controlAction and ( not (bool(options.instance) ^ bool(options.groupName))):
         parser.error("You have to specify an instance id or group for control (start/stop/term) functions")
 
-    if options.winPass and ( not (bool(options.instance) ^ bool(options.groupName))):
-        parser.error("You have to specify an instance id or group for control (windows password) functions")
+    if options.winPass and ( (bool(options.instance) ^ bool(options.groupName))):
+#        parser.error("You have to specify an instance id or group for control (windows password) functions")
+        print getWindowsPassword(boto.connect_ec2(), options.instance, options.keyFile)
 
     # Get the database connection set up. Place no connect actions above, post connects below
     if options.useDB:
@@ -474,13 +511,13 @@ MongoDB CAP AWS instance builder for test""")
     # Here's where I smh and realize I have to move all of the instance creation junk
     # to a separate method and out of main.
     if( options.groupName or options.instance ):
-        if options.action:
-            changeState(options.groupName, options.instance, options.action, ec2_inst)
+        if options.controlAction:
+            changeState(options.groupName, options.instance, options.controlAction, ec2_inst)
         sys.exit()
 
 
     # Make sure we don't leave the root EBS volume hanging around
-    dev_sda = boto.ec2.blockdevicemapping.EBSBlockDeviceType(delete_on_termination=True, size=20)
+    dev_sda = boto.ec2.blockdevicemapping.EBSBlockDeviceType(delete_on_termination=True, size=options.rootSize)
     block_dm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
     block_dm['/dev/sda1'] = dev_sda
 
@@ -521,6 +558,7 @@ MongoDB CAP AWS instance builder for test""")
                     key_dir=kdir,
                     group_name=options.secGroup,
                     tags=inst_tags,
+                    getPass=options.winPass,
                     cmd_shell=False,
 #                    user_data=script,
 #                    login_user='fedora',
