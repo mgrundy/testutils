@@ -1,8 +1,10 @@
 import sys
 import os
+import pwd
 import time
 import boto
 import boto.ec2
+from datetime import date, timedelta
 import boto.manage.cmdshell
 from boto import route53
 from boto.route53 import connection
@@ -122,6 +124,7 @@ def getWindowsPassword(ec2, instance, keyfile):
         while not password_data:
             print "getting password for instance: ", instance
             password_data = ec2.get_password_data(instance)
+            print "intermed data", password_data
             time.sleep(10)
         cipher = PKCS1_v1_5.new(key)
         plaintext = cipher.decrypt(password_data.decode('base64'), None)
@@ -343,7 +346,7 @@ def dnsUpdate( hostDict, dnsName, access=None, key=None):
 
 def main():
     import optparse
-
+    user_info = pwd.getpwuid( os.getuid() )
     parser = optparse.OptionParser(usage="""\
 %prog [options]
 
@@ -360,7 +363,7 @@ MongoDB CAP AWS instance builder for test""")
     parser.add_option("-c", "--count", dest="buildCount",
         help="Number of instances to build",
         type="int",
-        default=None)
+        default=1)
 
     parser.add_option("-s", "--spot", dest="spotRequest",
         help="Request spot instances",
@@ -379,19 +382,19 @@ MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("--requestor", dest="requestor",
         help="The name to tag as requestor",
-        default=None)
+        default=user_info[4])
 
     parser.add_option("--name", dest="instName",
         help="The instance name, or name prefix (for multiples)",
-        default=None)
+        default=user_info[0])
 
     parser.add_option("--expires", dest="expires",
         help="Value for the expires-on tag",
-        default=None)
+        default=(date.today() + timedelta(days=3)).isoformat())
 
     parser.add_option("--ami", dest="amiId",
         help="The ami nickname to use",
-        default=None)
+        default="awz")
 
     parser.add_option("--list-types", dest="listType",
         help="display the machine types we can build",
@@ -410,11 +413,11 @@ MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("-m", "--instance-type", dest="instanceType",
         help="instance type to build",
-        default=None)
+        default="m1.small")
 
     parser.add_option("-k", "--keyfile", dest="keyFile",
         help="name and path of ssh key file, created if doesn't exist",
-        default=None)
+        default=user_info[5] + "/" + user_info[4] + ".pem")
 
     parser.add_option("--windows-password", dest="winPass",
         help="Get the Windows administrator password for the instances selected by --group or -i",
@@ -442,11 +445,11 @@ MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("--sec-group", dest="secGroup",
         help="name of security group to use, will create if doesn't exist (With ssh only)",
-        default=None)
+        default=user_info[0])
 
     parser.add_option("--group", dest="groupName",
         help="name of management group. only used internally for managing instances (do this if you are attached to a db)",
-        default=None)
+        default="Default Group")
 
     parser.add_option("-d", "--domain", dest="domainName",
         help="name of the domain to update with the new hosts",
@@ -513,7 +516,7 @@ MongoDB CAP AWS instance builder for test""")
     if( options.groupName or options.instance ):
         if options.controlAction:
             changeState(options.groupName, options.instance, options.controlAction, ec2_inst)
-        sys.exit()
+            sys.exit()
 
 
     # Make sure we don't leave the root EBS volume hanging around
@@ -569,32 +572,33 @@ MongoDB CAP AWS instance builder for test""")
     hostList = {}
     for r in reservations:
         for inst in r.instances:
-            tmphname = options.prefixName + "-%02d." % count + options.domainName + "." 
-            hostList[tmphname] = inst.public_dns_name
-            count += 1
-        try:
-            instance = {}
-            instance['_id'] = inst.id
-            instance['public_dns_name'] = inst.public_dns_name
-            instance['tags'] = inst.tags
-            instance['image_id'] = inst.image_id
-            instance['launch_time'] = inst.launch_time
-            instance['instance_type'] = inst.instance_type
-            instance['vpc_id'] = inst.vpc_id
-            instance['architecture'] = inst.architecture
-            instance['private_dns_name'] = inst.private_dns_name
-            instance['private_ip_address'] = inst.private_ip_address
-            instance['key_name'] = inst.key_name
-            instance['dns_alias'] = tmphname[:-1]
-            if options.groupName:
-    			instance['group'] = options.groupName
-            print "Instance created:\n ", instance
+            try:
+                instance = {}
+                instance['_id'] = inst.id
+                instance['public_dns_name'] = inst.public_dns_name
+                instance['tags'] = inst.tags
+                instance['image_id'] = inst.image_id
+                instance['launch_time'] = inst.launch_time
+                instance['instance_type'] = inst.instance_type
+                instance['vpc_id'] = inst.vpc_id
+                instance['architecture'] = inst.architecture
+                instance['private_dns_name'] = inst.private_dns_name
+                instance['private_ip_address'] = inst.private_ip_address
+                if options.prefixName:
+                    tmphname = options.prefixName + "-%02d." % count + options.domainName + "." 
+                    hostList[tmphname] = inst.public_dns_name
+                    count += 1
+                    instance['dns_alias'] = tmphname[:-1]
+                instance['key_name'] = inst.key_name
+                if options.groupName:
+                    instance['group'] = options.groupName
+                print "Instance created:\n ", instance
 
-            if options.useDB:
-                ec2_inst.insert(instance)
-        except ValueError, e:
-            # print sys.exc_info()
-            print e
+                if options.useDB:
+                    ec2_inst.insert(instance)
+            except ValueError, e:
+                # print sys.exc_info()
+                print e
     if options.domainName:
         # get the path to the user's homedir
         user_home = expanduser("~")
@@ -614,7 +618,5 @@ MongoDB CAP AWS instance builder for test""")
 
         dnsUpdate(hostList, options.domainName + ".", access=R53access, key=R53key) 
 
-# quick and ugly ugly test
-#print getWindowsPassword(boto.connect_ec2(),'i-b69b42cd', 'mg-repro.pem')
 if __name__ == "__main__":
     main()
