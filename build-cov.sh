@@ -25,7 +25,7 @@ MV_PATH=/local/ml
 ERRORLOG=covbuilderrors.log
 failedtests[${#failedtests[@]}]="Failed Test List:"
 # run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
-TEST_PLAN="js clone repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel" 
+TEST_PLAN="js jsCore repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel jsSlowNightly jsSlowWeekly" 
 
 function error_disp() {
 echo '===================================================='
@@ -74,7 +74,7 @@ function run_unittests() {
     # Run tests individually so that failures are noted, but bypassed
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
-    for test in smoke smokeCppUnittests smokeClient test; do 
+    for test in smoke smokeCppUnittests smokeClient ; do 
         scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
@@ -224,6 +224,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# wonder if I should switch to getopt and case this mess up
 while [ $# -gt 0 ]; do
     # -d directory to drop lcov results
     if [ "$1" == "-d" ]; then
@@ -285,7 +286,6 @@ while [ $# -gt 0 ]; do
         DO_GIT=0
     elif [ "$1" == "--skip-build" ]; then
         DO_BUILD=0
-    # TODO
     elif [ "$1" == "--skip-unit" ]; then
         DO_UNIT=0
     elif [ "$1" == "--skip-jstest" ]; then
@@ -328,7 +328,8 @@ fi
 if [ $DO_TESTS != 0 ]; then
     if [ $DO_UNIT != 0 ]; then
         run_unittests
-    elif [ $DO_JSTEST != 0 ]; then
+    fi
+    if [ $DO_JSTEST != 0 ]; then
         run_jstests
     fi
 fi
