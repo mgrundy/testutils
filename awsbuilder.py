@@ -75,6 +75,7 @@ pvmAmiList = {
         "fedora19":'ami-b22e5cdb'
         }
 hvmAmiList = {
+        "MongoWin":'ami-a3de90ca',
         "win2003":'ami-bc5f83d7',
         "win2008":'ami-7f236a16',
         "win2012":'ami-173d747e',
@@ -449,7 +450,7 @@ MongoDB CAP AWS instance builder for test""")
 
     parser.add_option("--group", dest="groupName",
         help="name of management group. only used internally for managing instances (do this if you are attached to a db)",
-        default="Default Group")
+        default=None)
 
     parser.add_option("-d", "--domain", dest="domainName",
         help="name of the domain to update with the new hosts",
@@ -492,9 +493,11 @@ MongoDB CAP AWS instance builder for test""")
     if options.controlAction and ( not (bool(options.instance) ^ bool(options.groupName))):
         parser.error("You have to specify an instance id or group for control (start/stop/term) functions")
 
-    if options.winPass and ( (bool(options.instance) ^ bool(options.groupName))):
+    if options.winPass and options.instance:
 #        parser.error("You have to specify an instance id or group for control (windows password) functions")
         print getWindowsPassword(boto.connect_ec2(), options.instance, options.keyFile)
+        sys.exit()
+
 
     # Get the database connection set up. Place no connect actions above, post connects below
     if options.useDB:
