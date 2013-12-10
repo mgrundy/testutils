@@ -130,15 +130,7 @@ function run_coverage () {
 
     # Clean up the coverage data files, that's why we die if phase one fails
     find $buildout -name \*.gcda -exec rm -f {} \;
-    echo Finishing the coverage report work in parallel with testing
-    run_coverage_background $@ &
-    echo Continuing onwards
-    return
-}   
- 
-function run_coverage_background () {
-set -x
-    echo Starting background coverage
+
     cd $LCOV_TMP
     # Clean out the third_party and system libs data
     lcov --extract raw-${REV}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
@@ -149,33 +141,13 @@ set -x
         echo run data saved in failed-raw-${REV}-${1}.info
         echo coverage data loss risk, please re-run:
         echo lcov --extract failed-raw-${REV}-${1}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
-
-        return 
+        exit
     fi  
 
     rm raw-${REV}.info
 
-    # ok, we have to serialize here
-    echo taking lock for lcov work
-    while ! mkdir $LCOV_TMP/buildcovlock > /dev/null 2>&1 ; do sleep 1; done;
-    trap 'rm -rf $LCOV_TMP/buildcovlock' 0 
-
     # Append all the test files to a single for reporting,
-    # first create an arg list of files to merge
-#    for la in lcov-${REV}-*.info; do
-#        covlist[${#covlist[@]}]="-a" 
-#        covlist[${#covlist[@]}]=$la 
-#    done
-    # Then run command with proper args. Supposedly we can just cat the files together
-    # We'll try that out later and see which is faster
     cat lcov-${REV}-*.info > lcov-${REV}.info
-    # Guess which was faster?
-#    lcov ${covlist[@]} -o lcov-${REV}.info --rc lcov_branch_coverage=1
-#    if [ $? != 0 ]; then
-#        error_disp $test
-#        echo lcov pass 3 failed
-#    fi  
-#    unset covlist
 
     # Run genhtml with 
     genhtml -s -o $LCOV_OUT/$REV -t "Branch: $BRANCH Commit:$REV $@" --highlight lcov-${REV}.info --rc lcov_branch_coverage=1
@@ -190,10 +162,7 @@ set -x
     ls -thor | grep -v index | awk '{print "<a href=\""$8"\" >"$8" " $5" "$6" "$7"</a><br>"}' >> index.html
     echo '</body></html>'>> index.html
    
-    echo releasing lock 
-    rm -rf $LCOV_TMP/buildcovlock
     cd $BUILD_DIR
-    return
 }
 
 function help () {
