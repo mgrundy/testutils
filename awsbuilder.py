@@ -26,8 +26,13 @@ ec2InstanceRates = {
     'm1.medium': {'hourly': .12},
     'm1.large': {'hourly': .24},
     'm1.xlarge': {'hourly': .48},
-    'm3.xlarge': {'hourly': .50},
-    'm3.2xlarge': {'hourly': 1.00},
+    'm3.xlarge': {'hourly': .450},
+    'm3.2xlarge': {'hourly': .90},
+    'c3.large': {'hourly':   0.150},
+    'c3.xlarge': {'hourly':  0.300},
+    'c3.2xlarge': {'hourly': 0.600},
+    'c3.4xlarge': {'hourly': 1.200},
+    'c3.8xlarge': {'hourly': 2.400},
     't1.micro': {'hourly': .02},
     'm2.xlarge': {'hourly': .41},
     'm2.2xlarge': {'hourly': .82},
@@ -177,7 +182,7 @@ def launch_instance(ami='ami-7341831a',
                     group_name='paws',
                     ssh_port=22,
                     cidr='0.0.0.0/0',
-                    tags={"requestor":"Mike Grundy"},
+                    tags={"Owner":"Mike Grundy"},
                     user_data=None,
                     cmd_shell=True,
                     login_user='ec2-user',
@@ -381,8 +386,8 @@ MongoDB CAP AWS instance builder for test""")
         action="store_false",
         default=True)
 
-    parser.add_option("--requestor", dest="requestor",
-        help="The name to tag as requestor",
+    parser.add_option("--owner", dest="Owner",
+        help="The name to tag as Owner",
         default=user_info[4])
 
     parser.add_option("--name", dest="instName",
@@ -537,7 +542,7 @@ MongoDB CAP AWS instance builder for test""")
     # P U T   L O G I C   H E R E
     
     # put together the tags dict. The host aliases will be serialized
-    inst_tags = {'Name':options.instName, 'requestor':options.requestor, 'expire-on': options.expires}
+    inst_tags = {'Name':options.instName, 'Owner':options.Owner, 'expire-on': options.expires}
     pprint(inst_tags)
 
     
