@@ -32,9 +32,9 @@ Usage:
 
 Here is a basic example that creates an on-demand m1.small instance running Ubuntu Server 10.04 LTS:
 
-python awsbuilder.py --expires=2013-11-03 --requestor="Mike Grundy" --name=QA-399 -m m1.small --nodb --sec-group=mg-fsr -k /Users/mg/mg-repro.pem -c 1 --ami=ubuntu1004
+python awsbuilder.py --expires=2013-11-03 --owner=<your jira username> --name=QA-399 -m m1.small --nodb --sec-group=mg-fsr -k /Users/mg/mg-repro.pem -c 1 --ami=ubuntu1004
 
-Our standard tags are filled out (the expires-on, requestor, and Name tags). 
+Our standard tags are filled out (the expires-on, owner, and Name tags).
 --sec-group specifies the name of the AWS security group for this instance. If you give a na name that doesn't exist, a new group with ssh and tcp ports 27010-27050 open.
 The -k specifies a ssh private key to use. If it doesn't exist, it will be created.
 -c is the number of instances to create, and --ami is the nickname of the AMI to use. Not all AMIs work with spot instances, and some machine classes are restricted from certain AMIs. It's a bit willy-nilly, but it will error fatally and tell you what was wrong.
@@ -87,7 +87,7 @@ Options:
   -s, --spot            Request spot instances
   -o, --ondemand        Request on-demand instances
   --nodb                Do not connect to database
-  --requestor=REQUESTOR The name to tag as requestor
+  --owner=OWNER         The name to tag as owner
   --name=INSTNAME       The instance name, or name prefix (for multiples)
   --expires=EXPIRES     Value for the expires-on tag
   --ami=AMIID           The ami nickname to use

@@ -182,7 +182,7 @@ def launch_instance(ami='ami-7341831a',
                     group_name='paws',
                     ssh_port=22,
                     cidr='0.0.0.0/0',
-                    tags={"Owner":"Mike Grundy"},
+                    tags={"owner":"Mike Grundy"},
                     user_data=None,
                     cmd_shell=True,
                     login_user='ec2-user',
@@ -387,7 +387,7 @@ MongoDB CAP AWS instance builder for test""")
         default=True)
 
     parser.add_option("--owner", dest="Owner",
-        help="The name to tag as Owner",
+        help="The name to tag as owner",
         default=user_info[4])
 
     parser.add_option("--name", dest="instName",
@@ -542,7 +542,7 @@ MongoDB CAP AWS instance builder for test""")
     # P U T   L O G I C   H E R E
     
     # put together the tags dict. The host aliases will be serialized
-    inst_tags = {'Name':options.instName, 'Owner':options.Owner, 'expire-on': options.expires}
+    inst_tags = {'Name':options.instName, 'owner':options.Owner, 'expire-on': options.expires}
     pprint(inst_tags)
 
     
