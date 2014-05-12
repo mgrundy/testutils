@@ -87,9 +87,10 @@ hvmAmiList = {
         "win2003":'ami-6b829f02',
         "win2008":'ami-df8e93b6',
         "win2012":'ami-5f938e36',
-        "awz":'ami-978d91fe',
+        "awz":'ami-69792c00',
         "rhel64":'ami-3218595b',
         "rhel65":'ami-5b697332',
+        "rhel7b":'ami-5b183532',
         "sles11":'ami-e572438c',
         "ubuntu14":'ami-1d8c9574',
         "ubuntu13":'ami-a1184ac8',
@@ -155,7 +156,16 @@ def getWindowsPassword(ec2, instance, keyfile):
 #    Only return when all spot requests have been fulfilled.
 def wait_for_fulfillment(conn, request_ids, pending_req_ids):
     instance_ids = []
-    results = conn.get_all_spot_instance_requests(request_ids=pending_req_ids)
+    retry_count = 0
+    while retry_count < 5:
+        try:    
+            results = conn.get_all_spot_instance_requests(request_ids=pending_req_ids)
+            break
+        except conn.ResponseError, e:
+            print e.code, "error getting requests, probs not ready"
+            time.sleep(10)
+            retry_count += 1
+
     for result in results:
         if result.status.code == 'fulfilled':
             pending_req_ids.pop(pending_req_ids.index(result.id))
