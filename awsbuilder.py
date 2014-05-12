@@ -68,25 +68,30 @@ ec2InstanceTypes = [
 ]
 
 pvmAmiList = {
-        "awz":'ami-35792c5c',
+        "awz":'ami-fb8e9292',
         "centos5":'ami-7739b21e',   #DynaCenter ami
         "centos6":'ami-07b73c6e',   #DynaCenter ami
         "rhel59": 'ami-cf5b32a6',
         "rhel64":'ami-a25415cb',
+        "rhel65":'ami-8d756fe4',
         "sles11":'ami-e8084981',
         "ubuntu1004":'ami-68c01201',
         "ubuntu1204":'ami-a73264ce',
         "ubuntu1310":'ami-ad184ac4',
-        "fedora19":'ami-b22e5cdb'
+        "ubuntu1404":'ami-018c9568',
+        "fedora19":'ami-b22e5cdb',
+        "arch":'ami-cd7b67a4'
         }
 hvmAmiList = {
         "MongoWin":'ami-a3de90ca',
-        "win2003":'ami-bc5f83d7',
-        "win2008":'ami-7f236a16',
-        "win2012":'ami-173d747e',
-        "awz":'ami-69792c00',
+        "win2003":'ami-6b829f02',
+        "win2008":'ami-df8e93b6',
+        "win2012":'ami-5f938e36',
+        "awz":'ami-978d91fe',
         "rhel64":'ami-3218595b',
-        "sles11":'ami-b6c146df',
+        "rhel65":'ami-5b697332',
+        "sles11":'ami-e572438c',
+        "ubuntu14":'ami-1d8c9574',
         "ubuntu13":'ami-a1184ac8',
         "ubuntu12":'ami-b93264d0'
         }
