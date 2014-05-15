@@ -1,26 +1,28 @@
 #!/bin/bash
-#Defaults
 
-LCOV_OUT=./lcov-output
-LCOV_TMP=.
+#Defaults
 BRANCH=master
 BUILD_DIR=$(pwd)
-DO_CLEAN=0
-DO_PULL=0
-DO_PATCH=0
-DO_CO=0
-DO_GIT=1
-DO_BUILD=1
-DO_TESTS=1
-DO_JSTEST=1
-DO_UNIT=1
-DO_COV=1
 DB_PATH=/data
-MV_PATH=/local/ml
+DO_BUILD=1
+DO_CLEAN=0
+DO_CO=0
+DO_COV=1
+DO_GIT=1
+DO_JSTEST=1
+DO_LOOP=0
+DO_PATCH=0
+DO_PULL=0
+DO_TESTS=1
+DO_UNIT=1
 ERRORLOG=covbuilderrors.log
+LCOV_OUT=./lcov-output
+LCOV_TMP=.
+MV_PATH=/local/ml
 failedtests[${#failedtests[@]}]="Failed Test List:"
 # run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
-TEST_PLAN="js jsCore repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel jsSlowNightly jsSlowWeekly" 
+TEST_PLAN="js jsCore repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel noPassthrough noPassthroughWithMongod querySystemMigration slow1 slow2 sslSpecial" 
+REV=0
 
 function error_disp() {
 echo '===================================================='
@@ -31,26 +33,29 @@ echo '===================================================='
 
 function do_git_tasks() {
     cd $BUILD_DIR
-    if [ $DO_CO != 1 ]; then
-        git checkout $BRANCH
-    fi
-    if [ $DO_CLEAN != 0 ]; then
-        git clean -fqdx
-    fi
-    if [ $DO_PULL != 0 ]; then
-        git pull
-        if [ $? != 0 ] && [ $DO_ANYWAY != 1 ]; then
-            echo "Git seems to be up to date, use -f to do it anyway"
-            exit 1
+    if [ $DO_GIT != 0 ]; then
+        if [ $DO_CO != 1 ]; then
+            git checkout $BRANCH
         fi
-    fi  
-    if [ $DO_PATCH != 0 ]; then
-        patch -N -p1 < $PATCH
-        if [ $? != 0 ]; then
-            echo PATCH $PATCH has issues. Deal with it plz.
-            exit
+        if [ $DO_CLEAN != 0 ]; then
+            git clean -fqdx
+        fi
+        if [ $DO_PULL != 0 ]; then
+            git pull
+            if [ $? != 0 ] && [ $DO_ANYWAY != 1 ]; then
+                echo "Git seems to be up to date, use -f to do it anyway"
+                exit 1
+            fi
+        fi  
+        if [ $DO_PATCH != 0 ]; then
+            patch -N -p1 < $PATCH
+            if [ $? != 0 ]; then
+                echo PATCH $PATCH has issues. Deal with it plz.
+                exit
+            fi
         fi
     fi
+    REV=$(git rev-parse --short HEAD)
 }
 
 function run_build() {
@@ -60,7 +65,7 @@ function run_build() {
     # scons -j8 --opt=off --mute --gcov --cc=/usr/local/bin/gcc --cxx=/usr/local/bin/g++ --cpppath=/usr/local/include/c++/4.8.1/ --libpath=/usr/local/lib --extrapath=/usr/local/lib/gcc/x86_64-apple-darwin12.4.0/4.8.1/ all
     if [ $? != 0 ]; then
         error_disp BUILD
-        exit 1
+        [ $DO_LOOP == 1 ] && return 1 || exit 1
     fi  
 }
 
@@ -110,7 +115,6 @@ function run_coverage () {
     # figure out where the binaries are
     cd $BUILD_DIR
     buildout=$(dirname $(find build -type f -perm +111 -name mongod))
-    REV=$(git rev-parse --short HEAD)
     mkdir -p $LCOV_OUT/$REV
 
     # $1 is the test
@@ -120,7 +124,7 @@ function run_coverage () {
         echo lcov pass 1 failed
         echo coverage data loss risk, please re-run:
         echo lcov -t $1 -o $LCOV_TMP/raw-${REV}.info -c -d ./${buildout}  -b src/mongo/ --derive-func-data --rc lcov_branch_coverage=1
-        exit
+        [ $DO_LOOP == 1 ] && return 1 || exit 1
     fi  
 
     # Clean up the coverage data files, that's why we die if phase one fails
@@ -136,7 +140,7 @@ function run_coverage () {
         echo run data saved in failed-raw-${REV}-${1}.info
         echo coverage data loss risk, please re-run:
         echo lcov --extract failed-raw-${REV}-${1}.info \*mongo/src/mongo\* -o  lcov-${REV}-${1}.info --rc lcov_branch_coverage=1
-        exit
+        [ $DO_LOOP == 1 ] && return 1 || exit 1
     fi  
 
     rm raw-${REV}.info
@@ -172,6 +176,7 @@ function help () {
     echo '--patch "patch path/name" patch to apply before build (not implemented yet)'
     echo '--build-dir "path" place where MongoDB source lives'
     echo '--mv-dir "path" multiversion link directory'
+    echo '--loop run all phases repeatedly on change in git hash'
     echo '--skip-git skip over all the git phases'
     echo '--skip-build skip the build phase'
     echo '--skip-coverage coverage reports will not be run'
@@ -246,6 +251,8 @@ while [ $# -gt 0 ]; do
         DO_CO=1
     elif [ "$1" == "-f" ]; then
         DO_ANYWAY=1
+    elif [ "$1" == "--loop" ]; then
+        DO_LOOP=1
     elif [ "$1" == "--skip-git" ]; then
         DO_GIT=0
     elif [ "$1" == "--skip-build" ]; then
@@ -292,26 +299,45 @@ else
 fi
 
 # Main execution of work items:
-if [ $DO_GIT != 0 ]; then
+if [ $DO_LOOP == 1 ]; then
+    while [ 1 ]; do
+        OLD_REV=$REV
+        do_git_tasks
+        if [ $OLD_REV != $REV ]; then
+            run_build
+            if [ $? -eq 0 ]; then
+                run_unittests
+                if [ $? -eq 0 ]; then
+                    run_jstests
+                fi
+            fi
+        else
+            echo New git revision not found, sleeping
+            time
+            sleep 300
+        fi
+    done
+else
+    # skip logic now in do_git_tasks, always call
     do_git_tasks
-fi
-if [ $DO_BUILD != 0 ]; then
-    run_build
-fi
-if [ $DO_TESTS != 0 ]; then
-    if [ $DO_UNIT != 0 ]; then
-        run_unittests
+    if [ $DO_BUILD != 0 ]; then
+        run_build
     fi
-    if [ $DO_JSTEST != 0 ]; then
-        run_jstests
+    if [ $DO_TESTS != 0 ]; then
+        if [ $DO_UNIT != 0 ]; then
+            run_unittests
+        fi
+        if [ $DO_JSTEST != 0 ]; then
+            run_jstests
+        fi
     fi
-fi
-# only run if tests aren't
-if [ $DO_COV != 0 ]; then
-    run_coverage report_only
-fi
+    # only run if tests aren't
+    if [ $DO_COV != 0 ]; then
+        run_coverage report_only
+    fi
 
-if [ $DO_TESTS != 0 ]; then
-    echo ${failedtests[@]}
+    if [ $DO_TESTS != 0 ]; then
+        echo ${failedtests[@]}
+    fi
 fi
 
