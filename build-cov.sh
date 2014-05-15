@@ -1,11 +1,6 @@
 #!/bin/bash
 #Defaults
-which lcov
-if [ $(uname) == "Darwin" ]; then
-    CPUS=$(sysctl machdep.cpu.core_count| cut -f2 -d" ")
-else
-    CPUS=$(cat /proc/cpuinfo | grep -c processor)
-fi
+
 LCOV_OUT=./lcov-output
 LCOV_TMP=.
 BRANCH=master
@@ -74,7 +69,7 @@ function run_unittests() {
     # Run tests individually so that failures are noted, but bypassed
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
-    for test in smoke smokeCppUnittests smokeClient ; do 
+    for test in smoke smokeCppUnittests ; do 
         scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
@@ -283,11 +278,20 @@ while [ $# -gt 0 ]; do
 done
 
 # quick check for lcov
+which lcov
 if [ $? -ne 0 ]; then
     error_disp "LCOV check"
     exit 1
 fi
 
+# Get CPU count to populate -j on builds
+if [ $(uname) == "Darwin" ]; then
+    CPUS=$(sysctl machdep.cpu.core_count| cut -f2 -d" ")
+else
+    CPUS=$(cat /proc/cpuinfo | grep -c processor)
+fi
+
+# Main execution of work items:
 if [ $DO_GIT != 0 ]; then
     do_git_tasks
 fi
@@ -306,10 +310,6 @@ fi
 if [ $DO_COV != 0 ]; then
     run_coverage report_only
 fi
-# we may have launched children
-echo Waiting for subprocesses to complete
-wait
-echo Have a nice day
 
 if [ $DO_TESTS != 0 ]; then
     echo ${failedtests[@]}
