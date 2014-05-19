@@ -21,7 +21,7 @@ LCOV_TMP=.
 MV_PATH=/local/ml
 failedtests[${#failedtests[@]}]="Failed Test List:"
 # run every friendly test. quota is not a friendly test. jsPerf isn't anymore either
-TEST_PLAN="js jsCore repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel noPassthrough noPassthroughWithMongod querySystemMigration slow1 slow2 sslSpecial" 
+TEST_PLAN="js jsCore repl replSets ssl dur auth aggregation failPoint multiVersion disk sharding tool parallel noPassthrough noPassthroughWithMongod slow1 slow2 sslSpecial" 
 REV=0
 
 function error_disp() {
@@ -253,6 +253,8 @@ while [ $# -gt 0 ]; do
         DO_ANYWAY=1
     elif [ "$1" == "--loop" ]; then
         DO_LOOP=1
+        DO_PULL=1
+        DO_CLEAN=1
     elif [ "$1" == "--skip-git" ]; then
         DO_GIT=0
     elif [ "$1" == "--skip-build" ]; then
