@@ -4,11 +4,12 @@ import pwd
 import time
 import boto
 import boto.ec2
-from datetime import date, timedelta
+import boto.vpc
 import boto.manage.cmdshell
 from boto import route53
 from boto.route53 import connection
 from boto.route53.record import ResourceRecordSets
+from datetime import date, timedelta
 import copy
 import pymongo
 from pymongo import MongoClient
@@ -98,7 +99,10 @@ hvmAmiList = {
         }
 
 def changeState(group, instid, action, ec2_inst):
-    ec2 = boto.connect_ec2()
+# Deprecated
+    # ec2 = boto.connect_ec2()
+# XXX TODO take region as an option
+    ec2 = boto.vpc.connect_to_region("us-east-1")
     instancelist = list()
     # try block this stuff please
     if group:
@@ -207,15 +211,18 @@ def launch_instance(ami='ami-7341831a',
 
 
     cmd = None
+    create_group = False
 
     # Create a connection to EC2 service.
-    ec2 = boto.connect_ec2()
+    #ec2 = boto.connect_ec2()
+    ec2 = boto.vpc.connect_to_region("us-east-1")
 
     # Check to see if specified keypair already exists.
     # If we get an InvalidKeyPair.NotFound error back from EC2,
     # it means that it doesn't exist and we need to create it.
     try:
         key = ec2.get_all_key_pairs(keynames=[key_name])[0]
+        print key
     except ec2.ResponseError, e:
         if e.code == 'InvalidKeyPair.NotFound':
             print 'Creating keypair: %s' % key_name
@@ -234,16 +241,21 @@ def launch_instance(ami='ami-7341831a',
     # If we get an InvalidGroup.NotFound error back from EC2,
     # it means that it doesn't exist and we need to create it.
     try:
-        group = ec2.get_all_security_groups(groupnames=[group_name])[0]
+        print ec2.get_all_security_groups()
+        group = ec2.get_all_security_groups(filters={'group-name': group_name})[0]
+    except IndexError:
+        create_group = True
     except ec2.ResponseError, e:
         if e.code == 'InvalidGroup.NotFound':
-            print 'Creating Security Group: %s' % group_name
-            # Create a security group to control access to instance via SSH.
-            group = ec2.create_security_group(group_name,
-                                              'A group that allows SSH access')
+            create_group = True
         else:
             raise
-
+    if create_group:
+        print 'Creating Security Group: %s' % group_name
+        # Create a security group to control access to instance via SSH.
+        group = ec2.create_security_group(group_name,
+                                              'A group that allows SSH access',
+                                              vpc_id="vpc-9b04b5fe")
     # Add a rule to the security group to authorize SSH traffic
     # on the specified port.
     try:
@@ -265,7 +277,8 @@ def launch_instance(ami='ami-7341831a',
     	 count=count,  # count
     	 type='one-time',
     	 key_name=key_name, # key_name
-    	 security_groups= [group_name],
+         security_group_ids=[group.id],
+         subnet_id='subnet-a3cb3bfa',
     	 user_data=user_data,
     	 instance_type=instance_type, #instance type
          # # Currently unused options
@@ -288,9 +301,10 @@ def launch_instance(ami='ami-7341831a',
         reservation = [ec2.run_instances(ami,
                         min_count=count, max_count=count,
                         key_name=key_name,
-                        security_groups=[group_name],
+                        security_group_ids=[group.id],
                         instance_type=instance_type,
 	    		        block_device_map=bdm,
+                        subnet_id='subnet-a3cb3bfa',
                         user_data=user_data)]
 
     # The instance has been launched but it's not yet up and
