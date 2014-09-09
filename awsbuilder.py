@@ -113,7 +113,7 @@ ec2InstanceTypes = [
     # Storage Optimized Prev Gen
     'hi1.4xlarge',
     # Micro
-    't1.micro': {'hourly': .02}
+    't1.micro'
 ]
 
 pvmAmiList = {
