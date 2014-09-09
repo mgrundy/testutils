@@ -23,28 +23,50 @@ from Crypto.PublicKey import RSA
 # We'll use these to determine what the highest spot price
 # should be
 ec2InstanceRates = {
-    'm1.small': {'hourly': .06},
-    'm1.medium': {'hourly': .12},
-    'm1.large': {'hourly': .24},
-    'm1.xlarge': {'hourly': .48},
-    'm3.xlarge': {'hourly': .450},
-    'm3.2xlarge': {'hourly': .90},
-    'c3.large': {'hourly':   0.150},
-    'c3.xlarge': {'hourly':  0.300},
-    'c3.2xlarge': {'hourly': 0.600},
-    'c3.4xlarge': {'hourly': 1.200},
-    'c3.8xlarge': {'hourly': 2.400},
-    't1.micro': {'hourly': .02},
-    'm2.xlarge': {'hourly': .41},
-    'm2.2xlarge': {'hourly': .82},
-    'm2.4xlarge': {'hourly': 1.64},
-    'c1.medium': {'hourly': .145},
-    'c1.xlarge': {'hourly': .58},
-    'cc1.4xlarge': {'hourly': 1.30},
-    'cc2.8xlarge': {'hourly': 2.40},
+    # General Purpose Current Gen    
+    # These don't look like they can be spot
+    't2.micro': {'hourly': .013},
+    't2.small': {'hourly': .026},
+    't2.medium': {'hourly': .052},
+    # These can be spot
+    'm3.medium': {'hourly': .07},
+    'm3.large': {'hourly': .14},
+    'm3.xlarge': {'hourly': .28},
+    'm3.2xlarge': {'hourly': .56},
+    # General Purpose Prev Gen    
+    'm1.small': {'hourly': .044},
+    'm1.medium': {'hourly': .087},
+    'm1.large': {'hourly': .175},
+    'm1.xlarge': {'hourly': .35},
+    # Compute Optimized Current Gen
+    'c3.large': {'hourly':   0.105},
+    'c3.xlarge': {'hourly':  0.210},
+    'c3.2xlarge': {'hourly': 0.420},
+    'c3.4xlarge': {'hourly': 0.840},
+    'c3.8xlarge': {'hourly': 1.680},
+    # Compute Optimized Prev Gen
+    'c1.medium': {'hourly': .24},
+    'c1.xlarge': {'hourly': .53},
+    'cc2.8xlarge': {'hourly': 2.00},
+    # GPU Instances Current Gen
+    'g2.2xlarge': {'hourly': .65},
+    # GPU Instances Prev Gen
+    'cg1.4xlarge': {'hourly': 2.10},
+    # Memory Optimized Current Gen
+    'r3.large': {'hourly': .175},
+    'r3.xlarge': {'hourly': .350},
+    'r3.2xlarge': {'hourly': .70},
+    'r3.4xlarge': {'hourly': 1.40},
+    'r3.8xlarge': {'hourly': 2.80},
+    # Memory Optimized Prev Gen
+    'm2.xlarge': {'hourly': .245},
+    'm2.2xlarge': {'hourly': .49},
+    'm2.4xlarge': {'hourly': .98},
     'cr1.8xlarge': {'hourly': 3.50},
+    # Storage Optimized Prev Gen
     'hi1.4xlarge': {'hourly': 3.10},
-    'hs1.8xlarge': {'hourly': 4.60}
+    # Micro
+    't1.micro': {'hourly': .02}
     }
 
 ec2InstanceTypes = [
