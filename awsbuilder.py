@@ -70,52 +70,77 @@ ec2InstanceRates = {
     }
 
 ec2InstanceTypes = [
-	"t1.micro",
-	"m1.small",
-	"m1.medium",
-	"m1.large",
-	"m1.xlarge",
-	"m2.xlarge",
-	"m2.2xlarge",
-	"m2.4xlarge",
-	"c1.medium",
-	"c1.xlarge",
-	"cc1.4xlarge",
-	"cc2.8xlarge",
-	"cg1.4xlarge",
-	"cr1.8xlarge",
-	"m3.xlarge",
-	"m3.2xlarge",
-	"hi1.4xlarge",
-	"hs1.8xlarge"
+    # General Purpose Current Gen    
+    # These don't look like they can be spot
+    't2.micro',
+    't2.small',
+    't2.medium',
+    # These can be spot
+    'm3.medium',
+    'm3.large',
+    'm3.xlarge',
+    'm3.2xlarge',
+    # General Purpose Prev Gen    
+    'm1.small',
+    'm1.medium',
+    'm1.large',
+    'm1.xlarge',
+    # Compute Optimized Current Gen
+    'c3.large',
+    'c3.xlarge',
+    'c3.2xlarge',
+    'c3.4xlarge',
+    'c3.8xlarge',
+    # Compute Optimized Prev Gen
+    'c1.medium',
+    'c1.xlarge',
+    'cc2.8xlarge',
+    # GPU Instances Current Gen
+    'g2.2xlarge',
+    # GPU Instances Prev Gen
+    'cg1.4xlarge',
+    # Memory Optimized Current Gen
+    'r3.large',
+    'r3.xlarge',
+    'r3.2xlarge',
+    'r3.4xlarge',
+    'r3.8xlarge',
+    # Memory Optimized Prev Gen
+    'm2.xlarge',
+    'm2.2xlarge',
+    'm2.4xlarge',
+    'cr1.8xlarge',
+    # Storage Optimized Prev Gen
+    'hi1.4xlarge',
+    # Micro
+    't1.micro': {'hourly': .02}
 ]
 
 pvmAmiList = {
-        "awz":'ami-fb8e9292',
+        "awz":'ami-1b3b462b',
         "centos5":'ami-7739b21e',   #DynaCenter ami
         "centos6":'ami-07b73c6e',   #DynaCenter ami
         "rhel59": 'ami-cf5b32a6',
         "rhel64":'ami-a25415cb',
-        "rhel65":'ami-8d756fe4',
-        "sles11":'ami-e8084981',
+        "rhel65":'ami-7bdaa84b',
+        "sles11":'ami-a997ea99',
         "ubuntu1004":'ami-68c01201',
         "ubuntu1204":'ami-a73264ce',
         "ubuntu1310":'ami-ad184ac4',
-        "ubuntu1404":'ami-018c9568',
+        "ubuntu1404":'ami-8bb8c0bb',
         "fedora19":'ami-b22e5cdb',
         "arch":'ami-cd7b67a4'
         }
 hvmAmiList = {
-        "MongoWin":'ami-a3de90ca',
-        "win2003":'ami-6b829f02',
-        "win2008":'ami-df8e93b6',
-        "win2012":'ami-5f938e36',
-        "awz":'ami-69792c00',
+        "win2003":'ami-f16025c1',
+        "win2008":'ami-056d2835',
+        "win2012":'ami-3bcd880b',
+        "awz":'ami-d13845e1',
         "rhel64":'ami-3218595b',
         "rhel65":'ami-5b697332',
-        "rhel7b":'ami-5b183532',
-        "sles11":'ami-e572438c',
-        "ubuntu14":'ami-1d8c9574',
+        "rhel7":'ami-77d7a747',
+        "sles11":'ami-7fd3ae4f',
+        "ubuntu14":'ami-e7b8c0d7',
         "ubuntu13":'ami-a1184ac8',
         "ubuntu12":'ami-b93264d0'
         }
