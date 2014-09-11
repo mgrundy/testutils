@@ -74,8 +74,9 @@ function run_unittests() {
     # Run tests individually so that failures are noted, but bypassed
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
-    for test in smoke smokeCppUnittests ; do 
-        GCOV_PREFIX=/local/gcda/${test} scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
+    for test in smokeCppUnittests ; do 
+        export GCOV_PREFIX=/local/gcda/${test} 
+        scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
             echo $test returned $?;
