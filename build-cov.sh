@@ -75,7 +75,7 @@ function run_unittests() {
     #for test in smoke smokeCppUnittests smokeDisk smokeTool smokeAuth  smokeClient test; do 
     # run the unit tests first
     for test in smoke smokeCppUnittests ; do 
-        scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
+        GCOV_PREFIX=/local/gcda/${test} scons --ssl -j${CPUS} --mute --smokedbprefix=$DB_PATH --opt=off --gcov $test; 
         if [ $? != 0 ]; then
             error_disp $test
             echo $test returned $?;
@@ -96,7 +96,7 @@ function run_jstests() {
     # Run every test in the plan
     for test in $TEST_PLAN; do
         echo ===== Running $test =====
-        python buildscripts/smoke.py $AUTH $SSL --continue-on-failure --smoke-db-prefix=$DB_PATH $test; 
+        GCOV_PREFIX=/local/gcda/${test} python buildscripts/smoke.py $AUTH $SSL --continue-on-failure --smoke-db-prefix=$DB_PATH $test; 
         if [ $? != 0 ]; then
             error_disp $test
             failedtests[${#failedtests[@]}]=$test
@@ -287,11 +287,6 @@ while [ $# -gt 0 ]; do
 done
 
 # quick check for lcov
-which lcov
-if [ $? -ne 0 ]; then
-    error_disp "LCOV check"
-    exit 1
-fi
 
 # Get CPU count to populate -j on builds
 if [ $(uname) == "Darwin" ]; then
