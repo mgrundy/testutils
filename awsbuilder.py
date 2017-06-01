@@ -525,7 +525,7 @@ MongoDB CAP AWS instance builder for test""")
         const='terminate',
         default=None)
 
-    parser.add_option("--sec-group", dest="secGroup",
+    parser.add_option("-g", "--sec-group", dest="secGroup",
         help="name of security group to use, will create if doesn't exist (With ssh only)",
         default=user_info[0])
 
