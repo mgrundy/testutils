@@ -432,7 +432,7 @@ def main():
     parser = optparse.OptionParser(usage="""\
 %prog [options]
 
-MongoDB CAP AWS instance builder for test""")
+AWS instance builder for test""")
 
     parser.add_option("-l", "--log-file", dest="logfile",
         help="name of logfile all session traffic will be written to",
