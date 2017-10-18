@@ -1,47 +1,44 @@
-testutils
-=========
+# testutils
 
-github suggested I call this drunken-dangerzone. It's like they saw my code first...
+_github suggested I call this drunken-dangerzone. It's like they saw my code first..._
 
-There is a bunch of messy this and that in here. But the big one is awsbuilder. Probably will get it's own
-project at some point. Here's the info on that:
+*This was built for AWS classic. It doesn't really do VPC correctly.*
 
+There is a bunch of messy this and that in here. But the big one is awsbuilder. When I'm testing I frequently need to build up AWS instances. I've had a rag-tag fleet of scripts to do this for some time; but laziness and haste led to constant tweaking for a particular job instead of general purpose power.
 
-When we're testing we need to build up AWS instances frequently. I've had a rag-tag fleet of scripts to do this for some time; but laziness and haste led to constant tweaking for a particular job instead of general purpose power.
+## awsbuilder.py
 
-The QA tickets we've been working on lately has pushed the issue to a boil, and happily I'm announcing the first reasonably consumable version of my scripts now condensed into awsbuilder.py
+* The ability to build Linux or Windows instances
+* The ability to build Paravirtual or Hardware virtual instances
+* A set of working AMIs to choose from
+* Store your instance data in MongoDB, or work without a db
+* Support for Spot as well as on-demand instances (Spot is a significant cost saver over equivalent on-demand instances).
+* Ability to update Route53 DNS with sequential host CNAMEs (based on prefix, count, and domain name options)
 
-The ability to build Linux or Windows instances
-The ability to build Paravirtual or Hardware virtual instances
-A set of working AMIs to choose from
-Store your instance data in MongoDB, or work without a db
-Support for Spot as well as on-demand instances (Spot is a significant cost saver over equivalent on-demand instances).
-Ability to update Route53 DNS with sequential host CNAMEs (based on prefix, count, and domain name options)
+### Prereqs:
 
-Prereqs:
-
-Boto and PyMongo modules installed
-AWS credentials in a .boto file. Example:
-[Credentials]
+* Boto and PyMongo modules installed
+* AWS credentials in a .boto file. Example:
+```[Credentials]
 aws_access_key_id = AKIAIOMDXAAAAAAAAAAAA
 aws_secret_access_key = d+pzsYrrrrrrrrrrrrrrYYYYYYYYYYYYYYYYYYY5
+```
 
-If you don't have an aws access key, open a tech ops ticket to get one.
-
-Usage:
+### Usage:
 
 Here is a basic example that creates an on-demand m1.small instance running Ubuntu Server 10.04 LTS:
 
-python awsbuilder.py --expires=2013-11-03 --owner=<your jira username> --name=QA-399 -m m1.small --nodb --sec-group=mg-fsr -k /Users/mg/mg-repro.pem -c 1 --ami=ubuntu1004
+```python awsbuilder.py --expires=2013-11-03 --owner=<your jira username> --name=QA-399 -m m1.small --nodb --sec-group=mg-fsr -k /Users/mg/mg-repro.pem -c 1 --ami=ubuntu1004
+```
 
-Our standard tags are filled out (the expires-on, owner, and Name tags).
---sec-group specifies the name of the AWS security group for this instance. If you give a na name that doesn't exist, a new group with ssh and tcp ports 27010-27050 open.
-The -k specifies a ssh private key to use. If it doesn't exist, it will be created.
--c is the number of instances to create, and --ami is the nickname of the AMI to use. Not all AMIs work with spot instances, and some machine classes are restricted from certain AMIs. It's a bit willy-nilly, but it will error fatally and tell you what was wrong.
+* Standard tags from a previous gig are filled out (the expires-on, owner, and Name tags).
+--sec-group specifies the name of the AWS security group for this instance. If you give a name that doesn't exist, a new group with ssh and tcp ports 27010-27050 open.
+* The -k specifies a ssh private key to use. If it doesn't exist, it will be created.
+* -c is the number of instances to create, and --ami is the nickname of the AMI to use. Not all AMIs work with spot instances, and some machine classes are restricted from certain AMIs. It's a bit willy-nilly, but it will error fatally and tell you what was wrong.
 
-You can list out the available AMIs with the --list-ami option:
+* You can list out the available AMIs with the --list-ami option:
 
-python awsbuilder.py --list-ami
+```python awsbuilder.py --list-ami
 ParaVirt AMIs:
 	ubuntu1310
 	centos6
@@ -62,7 +59,8 @@ HardwareVirt AMIs:
 	ubuntu12
 	rhel64
 	sles11
-
+```
+#### Who knows if this is still even correct?
 A word about paravirtualization vs hardware virtualization: Windows instances are all Hardware Virtualization, some machine types (certain cluster compute nodes and m3 nodes for example) are as well. If you're creating a Windows instance or want to use a m3 or cluster compute machine type, specify the --hvm flag. You'll get an error if you get them wrong, no big deal.
 
 Spot instances are significantly less expensive than on-demand instances. Use them! But keep in mind some images won't work with spot pricing (RHEL for example). Spot works on a high bid basis. Costs are typically 1/10th of the on-demand price. I set the high bid price to be half of the on-demand price. That is the most that we can be charged for a spot instance. Keep in mind though, that spot instances will be cancelled if the market price goes above our high bid. They are not perfect for long running projects. That said, I've had spot instances run for quite some time without issue. The biggest thing to remember with spot instances is "don't store anything unique!". If you can't reproduce it with a shell script or git clone, don't keep it hanging on a spot instance. (Or use EBS storage and attach it to your spot, but think about what you're doing there before you start)
@@ -72,9 +70,9 @@ And here is a great comparison of instance types: http://copperegg.wpengine.netd
 
 
 
-Usage: awsbuilder.py [options]
+```Usage: awsbuilder.py [options]
 
-MongoDB AWS instance builder for test
+AWS instance builder for 
 
 Options:
   -h, --help            show this help message and exit
@@ -114,12 +112,5 @@ Options:
                         appended with number
   --startcount=STARTCOUNT
                         number to start appending to prefix with
-
-
-
-
-
-
-
-
-
+			
+```
