@@ -1,6 +1,6 @@
 boto==2.24.0
-ecdsa==0.10
-paramiko==1.12.1
-pycrypto==2.6.1
+ecdsa>=0.10
+paramiko>=1.12.1
+pycrypto>=2.6.1
 pymongo==2.6.3
 python-ldap==2.4.14
