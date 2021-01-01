@@ -40,24 +40,46 @@ def main():
 
     connection.close()
 
-# returns a list of okeys that were read in from file
 def read_okey_list(okeyfile):
+    """
+    Returns a list of string read in from provided file.
+
+        Parameters:
+            okeyfile (string): Path and filename of a file containing okey strings to read in.
+
+        Returns:
+            okey_list (list): List of strings read in from provided file.
+    """
     okey_list = []
     for okey in open(okeyfile, 'r'):
         okey_list.append(okey.rstrip())
     return okey_list
 
-# returns list of tuples with song okeys that were found in database
 def check_okeys(connection, okey_list):
+    """
+    Returns list of tuples containing okeys found in the ZGENERICSONG table.
+
+        Parameters:
+            connection (obj): sqlite3 database connection object
+            okey_list (list): List of okey strings to search for
+
+        Returns:
+            found_list (list): of tuples with found okeys.
+    """
     found_list = []
     # get a handle to the database
     cursor = connection.cursor()
     # open up list of okeys and lets go
     for okey in okey_list:
         try:
-            cursor.execute('select ZOKEY, ZTITLE from ZANGENERICSONG where ZOKEY=?', (okey,))
+            cursor.execute('select ZANGENERICSONG.ZOKEY, ' \
+                                  'ZANGENERICSONG.ZTITLE, '\
+                                  'ZANARTIST.ZNAME '       \
+                           'from ZANGENERICSONG    '       \
+                               'Inner Join ZANARTIST on ZANGENERICSONG.ZFKANLIBRARYSONGTOANARTIST=ZANARTIST.Z_PK ' \
+                           'where ZANGENERICSONG.ZOKEY=?', (okey,))
             for result in cursor:
-                print(result[0], result[1])
+                print(result[0], "\t%-40s\t" %  result[2], result[1])
                 found_list.append(result[:1])
         except sqlite3.Error as e:
             print(sys.exc_info())
@@ -66,16 +88,30 @@ def check_okeys(connection, okey_list):
     cursor.close()
     return found_list
 
-# list all songs
 def list_songs(connection):
+    """
+    Returns total number of rows found in ZGENERICSONG table.
+    Prints ZOKEY and ZTITLE fields for all rows in ZGENERICSONG table.
+
+        Parameters:
+            connection (obj): sqlite3 database connection object
+
+        Returns:
+            count (int): Total number of rows found in ZGENERICSONG table
+    """
     # get a handle to the database
     cursor = connection.cursor()
     count = 0
     try:
-        cursor.execute('select ZOKEY, ZTITLE from ZANGENERICSONG')
-        for result in cursor:
-            print(result[0], result[1])
-            count += 1
+            cursor.execute('select ZANGENERICSONG.ZOKEY, ' \
+                                  'ZANGENERICSONG.ZTITLE, '\
+                                  'ZANARTIST.ZNAME '       \
+                           'from ZANGENERICSONG    '       \
+                               'Inner Join ZANARTIST on ZANGENERICSONG.ZFKANLIBRARYSONGTOANARTIST=ZANARTIST.Z_PK ')
+
+            for result in cursor:
+                print(result[0], "\t%-40s\t" %  result[2], result[1])
+                count += 1
     except sqlite3.Error as e:
         print(e)
         sys.exit(1)
@@ -84,6 +120,16 @@ def list_songs(connection):
 
 # deletes okeys in list of tuples provided, returns deleted count
 def delete_songs(connection, delete_list):
+    """
+    Returns total number of rows deleted from the ZGENERICSONG table.
+
+        Parameters:
+            connection (obj): sqlite3 database connection object
+            delete_list (list): List of tuples containing the ZOKEY values to delete
+
+        Returns:
+            count (int): Total number of rows deleted from the ZGENERICSONG table
+    """
     cursor = connection.cursor()
     try:
         cursor.executemany('delete from ZANGENERICSONG where ZOKEY=?', delete_list)
@@ -94,6 +140,13 @@ def delete_songs(connection, delete_list):
     return cursor.rowcount
 
 def parse_commandline():
+    """
+    Parses command line and returns options object.
+
+        Returns:
+            options (object): Object containing all of the program options set
+            on the command line
+    """
     parser = optparse.OptionParser(usage="""\
             %prog -d database -f filename [-r]
                             query songs database for okeys from file """)
