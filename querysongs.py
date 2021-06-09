@@ -60,7 +60,7 @@ def check_okeys(connection, okey_list):
     Returns list of tuples containing okeys found in the ZGENERICSONG table.
 
         Parameters:
-            connection (obj): sqlite3 database connection object
+            connection (sqlite3.Connection): sqlite3 database connection instance
             okey_list (list): List of okey strings to search for
 
         Returns:
@@ -72,14 +72,15 @@ def check_okeys(connection, okey_list):
     # open up list of okeys and lets go
     for okey in okey_list:
         try:
-            cursor.execute('select ZANGENERICSONG.ZOKEY, ' \
-                                  'ZANGENERICSONG.ZTITLE, '\
-                                  'ZANARTIST.ZNAME '       \
-                           'from ZANGENERICSONG    '       \
-                               'Inner Join ZANARTIST on ZANGENERICSONG.ZFKANLIBRARYSONGTOANARTIST=ZANARTIST.Z_PK ' \
+            cursor.execute('select ZANGENERICSONG.ZOKEY, '
+                           'ZANGENERICSONG.ZTITLE, '
+                           'ZANARTIST.ZNAME '
+                           'from ZANGENERICSONG '
+                           'Inner Join ZANARTIST on '
+                           'ZANGENERICSONG.ZFKANLIBRARYSONGTOANARTIST=ZANARTIST.Z_PK '
                            'where ZANGENERICSONG.ZOKEY=?', (okey,))
             for result in cursor:
-                print(result[0], "\t%-40s\t" %  result[2], result[1])
+                print(result[0], "\t%-40s\t" % result[2], result[1])
                 found_list.append(result[:1])
         except sqlite3.Error as e:
             print(sys.exc_info())
@@ -88,13 +89,14 @@ def check_okeys(connection, okey_list):
     cursor.close()
     return found_list
 
+
 def list_songs(connection):
     """
     Returns total number of rows found in ZGENERICSONG table.
     Prints ZOKEY and ZTITLE fields for all rows in ZGENERICSONG table.
 
         Parameters:
-            connection (obj): sqlite3 database connection object
+            connection (sqlite3.Connection): sqlite3 database connection instance
 
         Returns:
             count (int): Total number of rows found in ZGENERICSONG table
@@ -124,7 +126,7 @@ def delete_songs(connection, delete_list):
     Returns total number of rows deleted from the ZGENERICSONG table.
 
         Parameters:
-            connection (obj): sqlite3 database connection object
+            connection (sqlite3.Connection): sqlite3 database connection instance
             delete_list (list): List of tuples containing the ZOKEY values to delete
 
         Returns:
