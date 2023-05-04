@@ -3,4 +3,4 @@ ecdsa>=0.10
 paramiko>=1.12.1
 pycrypto>=2.6.1
 pymongo==2.6.3
-python-ldap==2.4.14
+python-ldap==3.4.0
